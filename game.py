@@ -69,6 +69,7 @@ class SpadesState(GameState):
         self.dealer = dealer
         self.playerToMove = self.GetNextPlayer(self.dealer)
         self.currentTrick = []
+        self.trumpBroken = False
 
         self.playerHands = {p: [] for p in Player}
         self.tricksTaken = {}
@@ -82,8 +83,8 @@ class SpadesState(GameState):
         st = SpadesState(self.dealer)
         st.playerToMove = self.playerToMove
         st.tricksInRound = self.tricksInRound
-        st.NSscore = self.NSscore
-        st.EWscore = self.EWscore
+        st.NSscore = deepcopy(self.NSscore)
+        st.EWscore = deepcopy(self.EWscore)
         st.playerHands = deepcopy(self.playerHands)
         st.currentTrick = deepcopy(self.currentTrick)
         st.trumpSuit = self.trumpSuit
@@ -91,6 +92,7 @@ class SpadesState(GameState):
         st.dealer = self.dealer
         st.discards = deepcopy(self.discards)
         st.bets = deepcopy(self.bets)
+        st.trumpBroken = self.trumpBroken
 
         return st
 
@@ -123,7 +125,7 @@ class SpadesState(GameState):
         elif player == Player.south:
             self.bets[player] = 3
         else:
-            self.bets[player] = 6
+            self.bets[player] = 2
 
     def Deal(self):
         self.discards = []
@@ -150,6 +152,9 @@ class SpadesState(GameState):
     def DoMove(self, move):
         self.currentTrick.append((self.playerToMove, move))
 
+        if move.suit == Suit.spade and not self.trumpBroken:
+            self.trumpBroken = True
+
         self.playerHands[self.playerToMove].remove(move)
 
         self.playerToMove = self.GetNextPlayer(self.playerToMove)
@@ -172,9 +177,10 @@ class SpadesState(GameState):
 
             if not self.playerHands[self.playerToMove]:
                 self._score()
-                if self.GetResult(Player.north) != 0:
+                # TODO: Look at the other code to see how it should terminate
+                if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
-                #        print(self.GetResult(Player.north))
+                    #print(self.GetResult(Player.north))
                 self.Deal()
 
     def _score(self):
@@ -210,12 +216,15 @@ class SpadesState(GameState):
     def GetMoves(self):
         hand = self.playerHands[self.playerToMove]
 
-        if self.currentTrick == []:
-            return hand
+        if not self.currentTrick:
+            if not self.trumpBroken:
+                return [c for c in hand if c.suit != Suit.spade]
+            else:
+                return hand
         else:
             (leader, leadCard) = self.currentTrick[0]
             cardsInSuit = [card for card in hand if card.suit == leadCard.suit]
-            if cardsInSuit != []:
+            if cardsInSuit:
                 return cardsInSuit
             else:
                 return hand
@@ -230,17 +239,13 @@ class SpadesState(GameState):
         if player == Player.north or player == Player.south:
             if self.NSscore[0] >= 400:
                 return 1
-            elif self.NSscore[0] < 400 and self.EWscore[0] < 400:
-                return 0
             else:
-                return -1
+                return 0
         else:
             if self.EWscore[0] >= 400:
                 return 1
-            elif self.NSscore[0] < 400 and self.EWscore[0] < 400:
-                return 0
             else:
-                return -1
+                return 0
 
     def isOver(self):
         return self.GetResult(Player.north) != 0
