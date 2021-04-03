@@ -1,5 +1,6 @@
 import random
 from copy import deepcopy
+from math import sqrt, log
 
 from Types.types import *
 
@@ -111,6 +112,7 @@ class SpadesState(GameState):
     def GetCardDeck(self):
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
+    # TODO: Add real logic here
     def Bet(self, player):
         # Logic for giving bets
         # will fill this in later. Now just returning numbers
@@ -134,7 +136,6 @@ class SpadesState(GameState):
             self.playerHands[p] = deck[:self.tricksInRound]
             deck = deck[self.tricksInRound:]
             self.Bet(p)
-        # Todo: Add Betting logic here. probably in the form of a function call giving the hand and score
 
     def GetNextPlayer(self, p):
         if p == Player.north:
@@ -163,9 +164,9 @@ class SpadesState(GameState):
 
             self.tricksTaken[trickWinner] += 1
             self.discards += [card for (player, card) in self.currentTrick]
-            print(str(trickWinner) + " Wins")
-            print(self.currentTrick)
-            print("--------------------------------------------")
+            # print(str(trickWinner) + " Wins")
+            # print(self.currentTrick)
+            # print("--------------------------------------------")
             self.currentTrick = []
             self.playerToMove = trickWinner
 
@@ -173,7 +174,7 @@ class SpadesState(GameState):
                 self._score()
                 if self.GetResult(Player.north) != 0:
                     self.tricksInRound = 0
-                    print(self.GetResult(Player.north))
+                #        print(self.GetResult(Player.north))
                 self.Deal()
 
     def _score(self):
@@ -269,9 +270,135 @@ class SpadesState(GameState):
         cl = [card for card in self.playerHands[player] if card.suit == Suit.club]
         he = [card for card in self.playerHands[player] if card.suit == Suit.heart]
         di = [card for card in self.playerHands[player] if card.suit == Suit.diamond]
-        sp.sort(key = lambda x: x.val)
-        cl.sort(key = lambda x: x.val)
-        he.sort(key = lambda x: x.val)
-        di.sort(key = lambda x: x.val)
+        sp.sort(key=lambda x: x.val)
+        cl.sort(key=lambda x: x.val)
+        he.sort(key=lambda x: x.val)
+        di.sort(key=lambda x: x.val)
 
         return sp + cl + he + di
+
+
+class Node:
+    """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
+    """
+
+    def __init__(self, move=None, parent=None, playerJustMoved=None):
+        self.move = move  # the move that got us to this node - "None" for the root node
+        self.parentNode = parent  # "None" for the root node
+        self.childNodes = []
+        self.wins = 0
+        self.visits = 0
+        self.avails = 1
+        self.playerJustMoved = playerJustMoved  # the only part of the state that the Node needs later
+
+    def GetUntriedMoves(self, legalMoves):
+        """ Return the elements of legalMoves for which this node does not have children.
+        """
+
+        # Find all moves for which this node *does* have children
+        triedMoves = [child.move for child in self.childNodes]
+
+        # Return all moves that are legal but have not been tried yet
+        return [move for move in legalMoves if move not in triedMoves]
+
+    def UCBSelectChild(self, legalMoves, exploration=0.7):
+        """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
+            exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
+        """
+
+        # Filter the list of children by the list of legal moves
+        legalChildren = [child for child in self.childNodes if child.move in legalMoves]
+
+        # Get the child with the highest UCB score
+        s = max(legalChildren,
+                key=lambda c: float(c.wins) / float(c.visits) + exploration * sqrt(log(c.avails) / float(c.visits)))
+
+        # Update availability counts -- it is easier to do this now than during backpropagation
+        for child in legalChildren:
+            child.avails += 1
+
+        # Return the child selected above
+        return s
+
+    def AddChild(self, m, p):
+        """ Add a new child node for the move m.
+            Return the added child node
+        """
+        n = Node(move=m, parent=self, playerJustMoved=p)
+        self.childNodes.append(n)
+        return n
+
+    def Update(self, terminalState):
+        """ Update this node - increment the visit count by one, and increase the win count by the result of terminalState for self.playerJustMoved.
+        """
+        self.visits += 1
+        if self.playerJustMoved is not None:
+            self.wins += terminalState.GetResult(self.playerJustMoved)
+
+    def __repr__(self):
+        return "[M:%s W/V/A: %4i/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
+
+    def TreeToString(self, indent):
+        """ Represent the tree as a string, for debugging purposes.
+        """
+        s = self.IndentString(indent) + str(self)
+        for c in self.childNodes:
+            s += c.TreeToString(indent + 1)
+        return s
+
+    def IndentString(self, indent):
+        s = "\n"
+        for i in range(1, indent + 1):
+            s += "| "
+        return s
+
+    def ChildrenToString(self):
+        s = ""
+        for c in self.childNodes:
+            s += str(c) + "\n"
+        return s
+
+
+def ISMCTS(rootstate, itermax, verbose=False):
+    """ Conduct an ISMCTS search for itermax iterations starting from rootstate.
+        Return the best move from the rootstate.
+    """
+
+    rootnode = Node()
+
+    for i in range(itermax):
+        node = rootnode
+
+        # Determinize
+        state = rootstate.CloneAndRandomize(rootstate.playerToMove)
+
+        # Select
+        while state.GetMoves() != [] and node.GetUntriedMoves(
+                state.GetMoves()) == []:  # node is fully expanded and non-terminal
+            node = node.UCBSelectChild(state.GetMoves())
+            state.DoMove(node.move)
+
+        # Expand
+        untriedMoves = node.GetUntriedMoves(state.GetMoves())
+        if untriedMoves:  # if we can expand (i.e. state/node is non-terminal)
+            m = random.choice(untriedMoves)
+            player = state.playerToMove
+            state.DoMove(m)
+            node = node.AddChild(m, player)  # add child and descend tree
+
+        # Simulate
+        while state.GetMoves():  # while state is non-terminal
+            state.DoMove(random.choice(state.GetMoves()))
+
+        # Backpropagate
+        while node is not None:  # backpropagate from the expanded node and work back to the root node
+            node.Update(state)
+            node = node.parentNode
+
+    # Output some information about the tree - can be omitted
+    if verbose:
+        print(rootnode.TreeToString(0))
+    else:
+        print(rootnode.ChildrenToString())
+
+    return max(rootnode.childNodes, key=lambda c: c.visits).move  # return the move that was most visited

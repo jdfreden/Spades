@@ -1,5 +1,5 @@
 from Types.types import *
-from game import SpadesState
+from game import *
 
 import random
 
@@ -17,10 +17,20 @@ def main():
     # ss.DoMove(Card(Suit.spade, 13))
 
     #print(ss)
-    while not ss.isOver():
+    #while not ss.isOver():
+     #   print(ss)
+      #  ss.DoMove(random.choice(ss.GetMoves()))
+    while ss.GetMoves():
         print(ss)
-        ss.DoMove(random.choice(ss.GetMoves()))
+        if ss.playerToMove == Player.north:
+            m = ISMCTS(rootstate = ss, itermax = 10, verbose = False)
+        else:
+            m = ISMCTS(rootstate = ss, itermax = 5, verbose = False)
 
+        print("Best Move: " + str(m) + "\n")
+        ss.DoMove(m)
+
+    print(ss.GetResult2(Player.north))
 
 if __name__ == "__main__":
     random.seed(123)
