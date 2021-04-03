@@ -17,8 +17,7 @@ def main():
     # ss.DoMove(Card(Suit.spade, 13))
 
     #print(ss)
-    print(ss.bets)
-    while ss.GetMoves():
+    while not ss.isOver():
         print(ss)
         ss.DoMove(random.choice(ss.GetMoves()))
 

@@ -171,6 +171,10 @@ class SpadesState(GameState):
 
             if not self.playerHands[self.playerToMove]:
                 self._score()
+                if self.GetResult(Player.north) != 0:
+                    self.tricksInRound = 0
+                    print(self.GetResult(Player.north))
+                self.Deal()
 
     def _score(self):
         # This does not take into account going NIL
@@ -190,6 +194,13 @@ class SpadesState(GameState):
         self.NSscore[1] = self.NSscore[1] + bags[Player.north] + bags[Player.south]
         self.EWscore[1] = self.EWscore[1] + bags[Player.east] + bags[Player.west]
 
+        if self.NSscore[1] >= 10:
+            self.NSscore[0] -= 100
+            self.NSscore[1] -= 10
+        if self.EWscore[1] >= 10:
+            self.EWscore[0] -= 100
+            self.EWscore[1] -= 10
+
     def _sortTrick(self, suit, trump):
         suit.sort(key=lambda x: x[1])
         trump.sort(key=lambda x: x[1])
@@ -208,7 +219,6 @@ class SpadesState(GameState):
             else:
                 return hand
 
-    # TODO: This might not be the correct implementation
     def GetResult2(self, player):
         if player == Player.north or player == Player.south:
             return self.NSscore, self.EWscore
@@ -217,25 +227,28 @@ class SpadesState(GameState):
 
     def GetResult(self, player):
         if player == Player.north or player == Player.south:
-            if self.NSscore >= 400:
+            if self.NSscore[0] >= 400:
                 return 1
-            elif self.NSscore < 400 and self.EWscore < 400:
+            elif self.NSscore[0] < 400 and self.EWscore[0] < 400:
                 return 0
             else:
                 return -1
         else:
-            if self.EWscore >= 400:
+            if self.EWscore[0] >= 400:
                 return 1
-            elif self.NSscore < 400 and self.EWscore < 400:
+            elif self.NSscore[0] < 400 and self.EWscore[0] < 400:
                 return 0
             else:
                 return -1
+
+    def isOver(self):
+        return self.GetResult(Player.north) != 0
 
     def __repr__(self):
         """ Return a human-readable representation of the state
         """
         result = "%s: " % self.playerToMove
-        result += ",".join(str(card) for card in self.playerHands[self.playerToMove])
+        result += ",".join(str(card) for card in self.sortHand(self.playerToMove))
         result += " | Tricks: %i" % self.tricksTaken[self.playerToMove]
         result += " | Trump: %s" % self.trumpSuit
         result += " | Trick: ["
@@ -244,3 +257,21 @@ class SpadesState(GameState):
         result += " | Score: " + str(self.GetResult2(self.playerToMove)[0]) + " - " + str(
             self.GetResult2(self.playerToMove)[1])
         return result
+
+    # this function is only meant to make printing hands easier to look at
+    # Sort cards by value in arbitrary suit order
+    #     spade = 1
+    #     club = 2
+    #     heart = 3
+    #     diamond = 4
+    def sortHand(self, player):
+        sp = [card for card in self.playerHands[player] if card.suit == Suit.spade]
+        cl = [card for card in self.playerHands[player] if card.suit == Suit.club]
+        he = [card for card in self.playerHands[player] if card.suit == Suit.heart]
+        di = [card for card in self.playerHands[player] if card.suit == Suit.diamond]
+        sp.sort(key = lambda x: x.val)
+        cl.sort(key = lambda x: x.val)
+        he.sort(key = lambda x: x.val)
+        di.sort(key = lambda x: x.val)
+
+        return sp + cl + he + di
