@@ -3,6 +3,7 @@ from copy import deepcopy
 from math import sqrt, log
 
 from Types.types import *
+from betting import *
 
 
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
@@ -60,6 +61,7 @@ class GameState:
 
 class SpadesState(GameState):
     def __init__(self, dealer):
+        self.betting_tab = table_1_mod
         self.numberOfPlayers = 4
         self.tricksInRound = 13
         self.NSscore = [0, 0]
@@ -116,16 +118,13 @@ class SpadesState(GameState):
 
     # TODO: Add real logic here
     def Bet(self, player):
-        # Logic for giving bets
-        # will fill this in later. Now just returning numbers
-        if player == Player.north:
-            self.bets[player] = 2
-        elif player == Player.east:
-            self.bets[player] = 1
-        elif player == Player.south:
-            self.bets[player] = 3
-        else:
-            self.bets[player] = 2
+        bet = []
+        for suit in Suit:
+            if suit != Suit.spade:
+                sub = list(filter(lambda x: x.suit == suit, self.playerHands[player]))
+                bet.extend(side_suit_high(self.betting_tab, sub))
+        bet = np.asarray(bet).sum()
+        self.bets[player] = int(bet)
 
     def Deal(self):
         self.discards = []
@@ -169,18 +168,16 @@ class SpadesState(GameState):
 
             self.tricksTaken[trickWinner] += 1
             self.discards += [card for (player, card) in self.currentTrick]
-            # print(str(trickWinner) + " Wins")
-            # print(self.currentTrick)
-            # print("--------------------------------------------")
             self.currentTrick = []
             self.playerToMove = trickWinner
 
             if not self.playerHands[self.playerToMove]:
                 self._score()
                 # TODO: Look at the other code to see how it should terminate
+                #print("end")
                 if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
-                    #print(self.GetResult(Player.north))
+                    # print(self.GetResult(Player.north))
                 self.Deal()
 
     def _score(self):
@@ -236,6 +233,7 @@ class SpadesState(GameState):
             return self.EWscore, self.NSscore
 
     def GetResult(self, player):
+        # TODO Think about weighting result by margin of vicotry
         if player == Player.north or player == Player.south:
             if self.NSscore[0] >= 400:
                 return 1

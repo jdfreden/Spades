@@ -6,7 +6,10 @@ import random
 
 def main():
     ss = SpadesState(Player.north)
+    # TODO: Figure out why this has stopped working after I added some of the betting logic
+    print(ss.bets)
     while ss.GetMoves():
+        print(ss.GetMoves())
         print(ss)
         if ss.playerToMove == Player.north:
             m = ISMCTS(rootstate = ss, itermax = 10, verbose = False)
