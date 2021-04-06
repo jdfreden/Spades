@@ -23,7 +23,6 @@ Clubs:
 Diamonds
     Queen
 """
-# TODO: try to recreate betting scheme from paper
 n = [Card(Suit.spade, 14),
      Card(Suit.spade, 13),
      Card(Suit.spade, 11),
@@ -92,12 +91,30 @@ def side_suit_high(table, suitHand):
     return ret
 
 
+def spade_betting(spadeHand):
+    spadeHand.sort(key = lambda x: x.val, reverse = True)
+    tricks = 0
+    for i in range(len(spadeHand)):
+        card = spadeHand[i]
+        if card.val == 14:
+            tricks += 1
+        elif card.val in [13, 12, 11]:
+            # if number of cards greater than 'card' tricks +=1
+            protectors = (14 - card.val) - len(spadeHand[:i])
+            if len(spadeHand[i:]) - 1 >= protectors:
+                tricks += 1
+
+    tricks += len(spadeHand) - 4
+    return tricks
+
+
 ssh = []
 for suit in Suit:
+    sub = list(filter(lambda x: x.suit == suit, hands[Player.north]))
     if suit != Suit.spade:
-        sub = list(filter(lambda x: x.suit == suit, hands[Player.north]))
         ssh.extend(side_suit_high(a, sub))
+    else:
+        print(spade_betting(sub))
 
 ssh = np.asarray(ssh)
 print(ssh.sum())
-

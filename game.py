@@ -59,6 +59,12 @@ class GameState:
         pass
 
 
+def _sortTrick(suit, trump):
+    suit.sort(key=lambda x: x[1])
+    trump.sort(key=lambda x: x[1])
+    return suit + trump
+
+
 class SpadesState(GameState):
     def __init__(self, dealer):
         self.betting_tab = table_1_mod
@@ -95,6 +101,7 @@ class SpadesState(GameState):
         st.discards = deepcopy(self.discards)
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
+        st.betting_tab = deepcopy(self.betting_tab)
 
         return st
 
@@ -116,15 +123,20 @@ class SpadesState(GameState):
     def GetCardDeck(self):
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
-    # TODO: Add real logic here
+    # TODO: I think the poor betting is making the search never finish
+    # Don't think the code broke because of this but because this betting scheme is garbage so far
     def Bet(self, player):
         bet = []
+        spade_tricks = 0
         for suit in Suit:
+            sub = list(filter(lambda x: x.suit == suit, self.playerHands[player]))
             if suit != Suit.spade:
-                sub = list(filter(lambda x: x.suit == suit, self.playerHands[player]))
                 bet.extend(side_suit_high(self.betting_tab, sub))
+            else:
+                spade_tricks = spade_betting(sub)
         bet = np.asarray(bet).sum()
-        self.bets[player] = int(bet)
+
+        self.bets[player] = int(bet) + spade_tricks
 
     def Deal(self):
         self.discards = []
@@ -162,7 +174,7 @@ class SpadesState(GameState):
             (leader, leadCard) = self.currentTrick[0]
             suitedPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == leadCard.suit]
             trumpPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == self.trumpSuit]
-            sortedPlays = self._sortTrick(suitedPlays, trumpPlays)
+            sortedPlays = _sortTrick(suitedPlays, trumpPlays)
 
             trickWinner = sortedPlays[-1][0]
 
@@ -173,11 +185,10 @@ class SpadesState(GameState):
 
             if not self.playerHands[self.playerToMove]:
                 self._score()
-                # TODO: Look at the other code to see how it should terminate
-                #print("end")
+                #print(str(self.NSscore) + " " + str(self.EWscore))
                 if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
-                    # print(self.GetResult(Player.north))
+                    #print(self.GetResult(Player.north))
                 self.Deal()
 
     def _score(self):
@@ -204,11 +215,6 @@ class SpadesState(GameState):
         if self.EWscore[1] >= 10:
             self.EWscore[0] -= 100
             self.EWscore[1] -= 10
-
-    def _sortTrick(self, suit, trump):
-        suit.sort(key=lambda x: x[1])
-        trump.sort(key=lambda x: x[1])
-        return suit + trump
 
     def GetMoves(self):
         hand = self.playerHands[self.playerToMove]
@@ -370,14 +376,14 @@ def ISMCTS(rootstate, itermax, verbose=False):
     rootnode = Node()
 
     for i in range(itermax):
+        #print(i)
         node = rootnode
 
         # Determinize
         state = rootstate.CloneAndRandomize(rootstate.playerToMove)
 
         # Select
-        while state.GetMoves() != [] and node.GetUntriedMoves(
-                state.GetMoves()) == []:  # node is fully expanded and non-terminal
+        while state.GetMoves() != [] and node.GetUntriedMoves(state.GetMoves()) == []:  # node is fully expanded and non-terminal
             node = node.UCBSelectChild(state.GetMoves())
             state.DoMove(node.move)
 
@@ -390,7 +396,9 @@ def ISMCTS(rootstate, itermax, verbose=False):
             node = node.AddChild(m, player)  # add child and descend tree
 
         # Simulate
+        # The issue is here. This loop never ends
         while state.GetMoves():  # while state is non-terminal
+            # print(state.GetMoves())
             state.DoMove(random.choice(state.GetMoves()))
 
         # Backpropagate

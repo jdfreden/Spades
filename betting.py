@@ -35,3 +35,20 @@ def side_suit_high(table, suitHand):
             num_of_suit = len(suitHand)
             ret.append(table[num_of_suit][14 - card.val])
     return ret
+
+
+def spade_betting(spadeHand):
+    spadeHand.sort(key=lambda x: x.val, reverse=True)
+    tricks = 0
+    for i in range(len(spadeHand)):
+        card = spadeHand[i]
+        if card.val == 14:
+            tricks += 1
+        elif card.val in [13, 12, 11]:
+            # if number of cards greater than 'card' tricks +=1
+            protectors = (14 - card.val) - len(spadeHand[:i])
+            if len(spadeHand[i:]) - 1 >= protectors:
+                tricks += 1
+    if len(spadeHand) > 4:
+        tricks += len(spadeHand) - 4
+    return tricks
