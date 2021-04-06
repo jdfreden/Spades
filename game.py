@@ -216,10 +216,20 @@ class SpadesState(GameState):
             self.EWscore[0] -= 100
             self.EWscore[1] -= 10
 
+    def _allSpades(self, player):
+        for c in self.playerHands[self.playerToMove]:
+            if c.suit != Suit.spade:
+                return False
+        return True
+
     def GetMoves(self):
         hand = self.playerHands[self.playerToMove]
 
         if not self.currentTrick:
+            # if all cards are spades and trump is not broken set trumpbroken to true and procede
+            if not self.trumpBroken and self._allSpades(self.playerToMove):
+                self.trumpBroken = True
+
             if not self.trumpBroken:
                 return [c for c in hand if c.suit != Suit.spade]
             else:

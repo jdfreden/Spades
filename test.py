@@ -118,3 +118,38 @@ for suit in Suit:
 
 ssh = np.asarray(ssh)
 print(ssh.sum())
+
+n = [Card(Suit.spade, 14),
+     Card(Suit.spade, 13),
+     Card(Suit.spade, 12),
+     Card(Suit.spade, 11),
+     Card(Suit.spade, 10),
+     Card(Suit.spade, 9),
+     Card(Suit.spade, 8),
+     Card(Suit.spade, 7),
+     Card(Suit.spade, 6),
+     Card(Suit.spade, 5),
+     Card(Suit.spade, 4),
+     Card(Suit.spade, 3),
+     Card(Suit.spade, 2)]
+
+
+hands = {p: [] for p in Player}
+
+hands[Player.north] = n
+
+deck = SpadesState(Player.north).GetCardDeck()
+
+deck = [card for card in deck if card not in n]
+random.shuffle(deck)
+for p in Player:
+    if p != Player.north:
+        hands[p] = deck[:13]
+        deck = deck[13:]
+
+#print(hands)
+
+ss = SpadesState(Player.west)
+ss.playerHands = hands
+
+print(ss.GetMoves())

@@ -1,5 +1,7 @@
 import numpy as np
 
+# This betting scheme is inspired by 'Bidding in Spades' by Cohensius et al.
+
 table_1 = [[0.997, 0.966, 0.817],  # 0
            [0.994, 0.942, 0.733],  # 1
            [0.990, 0.907, 0.624],  # 2
