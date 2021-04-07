@@ -5,6 +5,8 @@ from math import sqrt, log
 from Types.types import *
 from betting import *
 
+# TODO: Look at this paper for better implementations of ISMCTS https://www.aaai.org/ocs/index.php/AIIDE/AIIDE13/paper/view/7369/7595
+
 
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
 # This code is meant be be subclassed for the specific game
@@ -123,8 +125,6 @@ class SpadesState(GameState):
     def GetCardDeck(self):
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
-    # TODO: I think the poor betting is making the search never finish
-    # Don't think the code broke because of this but because this betting scheme is garbage so far
     def Bet(self, player):
         bet = []
         spade_tricks = 0
@@ -186,6 +186,7 @@ class SpadesState(GameState):
             if not self.playerHands[self.playerToMove]:
                 self._score()
                 #print(str(self.NSscore) + " " + str(self.EWscore))
+                # TODO: Investigate what happens when both teams meet the goal on the same turn
                 if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
                     #print(self.GetResult(Player.north))
@@ -250,6 +251,12 @@ class SpadesState(GameState):
 
     def GetResult(self, player):
         # TODO Think about weighting result by margin of vicotry
+        """
+        potential weight scheme (from North/South perspective)
+        (NSscore - EWscore) / 400
+        This should between [0, 1]. Get more reward for a larger win
+        """
+
         if player == Player.north or player == Player.south:
             if self.NSscore[0] >= 400:
                 return 1
@@ -320,6 +327,7 @@ class Node:
         # Return all moves that are legal but have not been tried yet
         return [move for move in legalMoves if move not in triedMoves]
 
+    # TODO: Later in the game should the parameter be tuned for more exploitation?
     def UCBSelectChild(self, legalMoves, exploration=0.7):
         """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
             exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
