@@ -125,6 +125,7 @@ class SpadesState(GameState):
     def GetCardDeck(self):
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
+    # TODO: Finish betting scheme
     def Bet(self, player):
         bet = []
         spade_tricks = 0

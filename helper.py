@@ -8,3 +8,14 @@ def format_hand_for_write(state):
     out = {"Score": {"NS_score": s[0][0], "NS_bag": s[0][1], "EW_score": s[1][0], "EW_bag": s[1][1]},
            "Bets": bets}
     return out
+
+
+def clean_player(p):
+    if p == Player.north:
+        return "North"
+    elif p == Player.east:
+        return "East"
+    elif p == Player.south:
+        return "South"
+    else:
+        return "West"
