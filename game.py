@@ -5,6 +5,7 @@ from math import sqrt, log
 from Types.types import *
 from betting import *
 
+
 # TODO: Look at this paper for better implementations of ISMCTS https://www.aaai.org/ocs/index.php/AIIDE/AIIDE13/paper/view/7369/7595
 
 
@@ -86,6 +87,7 @@ class SpadesState(GameState):
 
         self.discards = []
         self.bets = {p: 0 for p in Player}
+        self.scoreChange = {"NS": [0, 0], "EW": [0, 0]}
 
         self.Deal()
 
@@ -104,6 +106,7 @@ class SpadesState(GameState):
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
         st.betting_tab = deepcopy(self.betting_tab)
+        st.scoreChange = deepcopy(self.scoreChange)
 
         return st
 
@@ -185,15 +188,14 @@ class SpadesState(GameState):
             self.playerToMove = trickWinner
 
             if not self.playerHands[self.playerToMove]:
-                self._score()
-                #print(str(self.NSscore) + " " + str(self.EWscore))
+                points, bags = self.score()
+                self._updateScore(points, bags)
                 # TODO: Investigate what happens when both teams meet the goal on the same turn
                 if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
-                    #print(self.GetResult(Player.north))
                 self.Deal()
 
-    def _score(self):
+    def score(self):
         # This does not take into account going NIL
         points = {p: 0 for p in Player}
         bags = {p: 0 for p in Player}
@@ -205,6 +207,25 @@ class SpadesState(GameState):
                 points[p] = self.bets[p] * 10 + bag
             else:
                 points[p] = self.bets[p] * -10
+
+        # self.NSscore[0] = self.NSscore[0] + points[Player.north] + points[Player.south]
+        # self.EWscore[0] = self.EWscore[0] + points[Player.east] + points[Player.west]
+        # self.NSscore[1] = self.NSscore[1] + bags[Player.north] + bags[Player.south]
+        # self.EWscore[1] = self.EWscore[1] + bags[Player.east] + bags[Player.west]
+        #
+        # if self.NSscore[1] >= 10:
+        #     self.NSscore[0] -= 100
+        #     self.NSscore[1] -= 10
+        # if self.EWscore[1] >= 10:
+        #     self.EWscore[0] -= 100
+        #     self.EWscore[1] -= 10
+        return points, bags
+
+    def _updateScore(self, points, bags):
+        self.scoreChange["NS"][0] = points[Player.north] + points[Player.south]
+        self.scoreChange["NS"][1] = bags[Player.north] + bags[Player.south]
+        self.scoreChange["EW"][0] = points[Player.east] + points[Player.west]
+        self.scoreChange["EW"][1] = bags[Player.east] + bags[Player.west]
 
         self.NSscore[0] = self.NSscore[0] + points[Player.north] + points[Player.south]
         self.EWscore[0] = self.EWscore[0] + points[Player.east] + points[Player.west]
@@ -250,24 +271,25 @@ class SpadesState(GameState):
         else:
             return self.EWscore, self.NSscore
 
+    # TODO: Finish this to return the change in score adjusted for bags
+    """
+        Use this formula:
+        [(Sp - 10 * Bp) - (So - 10 * Bo)] / c
+        where c is a normalizing constant such that this returns a value [-0.5, 0.5]
+        c = 260?
+    """
     def GetResult(self, player):
-        # TODO Think about weighting result by margin of vicotry
-        """
-        potential weight scheme (from North/South perspective)
-        (NSscore - EWscore) / 400
-        This should between [0, 1]. Get more reward for a larger win
-        """
+        c = 260
+        NS = self.scoreChange["NS"][0]
+        EW = self.scoreChange["EW"][0]
+        NSb = self.scoreChange["NS"][1]
+        EWb = self.scoreChange["EW"][1]
 
         if player == Player.north or player == Player.south:
-            if self.NSscore[0] >= 400:
-                return 1
-            else:
-                return 0
+            res = ((NS - 10 * NSb) - (EW - 10 * EWb)) / c
         else:
-            if self.EWscore[0] >= 400:
-                return 1
-            else:
-                return 0
+            res = ((EW - 10 * EWb) - (NS - 10 * NSb)) / c
+        return res
 
     def isOver(self):
         return self.GetResult(Player.north) != 0
@@ -361,6 +383,7 @@ class Node:
         """
         self.visits += 1
         if self.playerJustMoved is not None:
+            # scores, bags = terminalState.score() # the state get dealt again before being able to score it so this doesnt work
             self.wins += terminalState.GetResult(self.playerJustMoved)
 
     def __repr__(self):
@@ -395,14 +418,15 @@ def ISMCTS(rootstate, itermax, verbose=False):
     rootnode = Node()
 
     for i in range(itermax):
-        #print(i)
+        # print(i)
         node = rootnode
 
         # Determinize
         state = rootstate.CloneAndRandomize(rootstate.playerToMove)
 
         # Select
-        while state.GetMoves() != [] and node.GetUntriedMoves(state.GetMoves()) == []:  # node is fully expanded and non-terminal
+        while state.GetMoves() != [] and node.GetUntriedMoves(
+                state.GetMoves()) == []:  # node is fully expanded and non-terminal
             node = node.UCBSelectChild(state.GetMoves())
             state.DoMove(node.move)
 
@@ -415,9 +439,16 @@ def ISMCTS(rootstate, itermax, verbose=False):
             node = node.AddChild(m, player)  # add child and descend tree
 
         # Simulate
-        # The issue is here. This loop never ends
+
+        # while state.GetMoves():  # while state is non-terminal
+        #    state.DoMove(random.choice(state.GetMoves()))
+
+        # Implement this
         while state.GetMoves():  # while state is non-terminal
-            # print(state.GetMoves())
+            if len(state.playerHands[Player.north]) + len(state.playerHands[Player.east]) + len(
+                    state.playerHands[Player.south]) + len(state.playerHands[Player.west]) == 1:
+                state.DoMove(random.choice(state.GetMoves()))
+                break
             state.DoMove(random.choice(state.GetMoves()))
 
         # Backpropagate
