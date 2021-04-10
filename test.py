@@ -1,5 +1,7 @@
+import helper
 from Types.types import *
 from game import *
+from helper import *
 
 import random
 import numpy as np
@@ -51,6 +53,8 @@ for p in Player:
         deck = deck[13:]
 
 print(hands)
+
+hands2 = helper.deepcopy(hands)
 
 table_1 = [[0.997, 0.966, 0.817],  # 0
            [0.994, 0.942, 0.733],  # 1

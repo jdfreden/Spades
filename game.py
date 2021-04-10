@@ -1,13 +1,28 @@
+# This is a very simple Python 2.7 implementation of the Information Set Monte Carlo Tree Search algorithm.
+# The function ISMCTS(rootstate, itermax, verbose = False) is towards the bottom of the code.
+# It aims to have the clearest and simplest possible code, and for the sake of clarity, the code
+# is orders of magnitude less efficient than it could be made, particularly by using a
+# state.GetRandomMove() or state.DoRandomRollout() function.
+#
+# An example GameState classes for Knockout Whist is included to give some idea of how you
+# can write your own GameState to use ISMCTS in your hidden information game.
+#
+# Written by Peter Cowling, Edward Powley, Daniel Whitehouse (University of York, UK) September 2012 - August 2013.
+#
+# Licence is granted to freely use and distribute for any sensible/legal purpose so long as this comment
+# remains in any distributed code.
+#
+# For more information about Monte Carlo Tree Search check out our web site at www.mcts.ai
+# Also read the article accompanying this code at ***URL HERE***
+
 import random
-from copy import deepcopy
 from math import sqrt, log
 
+from helper import *
 from Types.types import *
 from betting import *
 
-
-# TODO: Look at this paper for better implementations of ISMCTS https://www.aaai.org/ocs/index.php/AIIDE/AIIDE13/paper/view/7369/7595
-
+# TODO: When there is only one card to play skip the iterations and just play the card
 
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
 # This code is meant be be subclassed for the specific game
@@ -196,7 +211,7 @@ class SpadesState(GameState):
                 self.Deal()
 
     def score(self):
-        # This does not take into account going NIL
+        # TODO:  implement NIL betting and scoring
         points = {p: 0 for p in Player}
         bags = {p: 0 for p in Player}
 
@@ -271,7 +286,6 @@ class SpadesState(GameState):
         else:
             return self.EWscore, self.NSscore
 
-    # TODO: Finish this to return the change in score adjusted for bags
     """
         Use this formula:
         [(Sp - 10 * Bp) - (So - 10 * Bo)] / c
@@ -279,7 +293,7 @@ class SpadesState(GameState):
         c = 260?
     """
     def GetResult(self, player):
-        c = 260
+        c = 130
         NS = self.scoreChange["NS"][0]
         EW = self.scoreChange["EW"][0]
         NSb = self.scoreChange["NS"][1]
@@ -289,6 +303,8 @@ class SpadesState(GameState):
             res = ((NS - 10 * NSb) - (EW - 10 * EWb)) / c
         else:
             res = ((EW - 10 * EWb) - (NS - 10 * NSb)) / c
+
+        # print(res)
         return res
 
     def isOver(self):
@@ -350,7 +366,7 @@ class Node:
         # Return all moves that are legal but have not been tried yet
         return [move for move in legalMoves if move not in triedMoves]
 
-    # TODO: Later in the game should the parameter be tuned for more exploitation?
+    # TODO (WISH): Later in the game should the parameter be tuned for more exploitation?
     def UCBSelectChild(self, legalMoves, exploration=0.7):
         """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
             exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
@@ -458,6 +474,7 @@ def ISMCTS(rootstate, itermax, verbose=False):
 
     # Output some information about the tree - can be omitted
     if verbose:
+        # TODO (WISH): write some kind of code to be able interactively interact with a given tree structure
         print(rootnode.TreeToString(0))
     else:
         print(rootnode.ChildrenToString())

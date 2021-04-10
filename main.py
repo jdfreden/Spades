@@ -31,8 +31,8 @@ def main(keep_output = False):
                 hand = "Hand: " + str(hand_count)
                 game[hand] = stat
 
-        if ss.playerToMove == Player.north or ss.playerToMove == Player.south:
-            m = ISMCTS(rootstate=ss, itermax=100, verbose=False)
+        if ss.playerToMove == Player.north:
+            m = ISMCTS(rootstate=ss, itermax=1000, verbose=False)
         else:
             m = ISMCTS(rootstate=ss, itermax=5, verbose=False)
 
@@ -49,7 +49,7 @@ def main(keep_output = False):
                 game[hand][trick] = plays
                 plays = []
 
-    print(ss.GetResult2(Player.north))
+    print(str(ss.NSscore) + str(ss.EWscore))
 
 
 if __name__ == "__main__":
