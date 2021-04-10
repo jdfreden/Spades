@@ -54,3 +54,16 @@ def spade_betting(spadeHand):
     if len(spadeHand) > 4:
         tricks += len(spadeHand) - 4
     return tricks
+
+
+def analyse_previous(previous, bet):
+    if not previous:
+        return 0
+    out = 0
+    players = 0
+    for k, v in previous.items():
+        out += v
+        players += 1
+
+    return 13 - (out + bet)
+

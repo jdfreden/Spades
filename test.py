@@ -54,7 +54,6 @@ for p in Player:
 
 print(hands)
 
-hands2 = helper.deepcopy(hands)
 
 table_1 = [[0.997, 0.966, 0.817],  # 0
            [0.994, 0.942, 0.733],  # 1
@@ -95,8 +94,9 @@ def side_suit_high(table, suitHand):
     return ret
 
 
+
 def spade_betting(spadeHand):
-    spadeHand.sort(key = lambda x: x.val, reverse = True)
+    spadeHand.sort(key=lambda x: x.val, reverse=True)
     tricks = 0
     for i in range(len(spadeHand)):
         card = spadeHand[i]
@@ -107,9 +107,10 @@ def spade_betting(spadeHand):
             protectors = (14 - card.val) - len(spadeHand[:i])
             if len(spadeHand[i:]) - 1 >= protectors:
                 tricks += 1
-
-    tricks += len(spadeHand) - 4
+    if len(spadeHand) > 4:
+        tricks += len(spadeHand) - 4
     return tricks
+
 
 
 ssh = []

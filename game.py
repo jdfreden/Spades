@@ -22,6 +22,7 @@ from helper import *
 from Types.types import *
 from betting import *
 
+
 # TODO: When there is only one card to play skip the iterations and just play the card
 
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
@@ -85,6 +86,7 @@ def _sortTrick(suit, trump):
 
 class SpadesState(GameState):
     def __init__(self, dealer):
+        super().__init__()
         self.betting_tab = table_1_mod
         self.numberOfPlayers = 4
         self.tricksInRound = 13
@@ -145,6 +147,7 @@ class SpadesState(GameState):
 
     # TODO: Finish betting scheme
     def Bet(self, player):
+        previous = {k: v for k, v in self.bets.items() if v >= 0}
         bet = []
         spade_tricks = 0
         for suit in Suit:
@@ -154,14 +157,14 @@ class SpadesState(GameState):
             else:
                 spade_tricks = spade_betting(sub)
         bet = np.asarray(bet).sum()
-
-        self.bets[player] = int(bet) + spade_tricks
+        analyse_previous(previous, bet)
+        self.bets[player] = round(bet) + spade_tricks
 
     def Deal(self):
         self.discards = []
         self.currentTrick = []
         self.tricksTaken = {p: 0 for p in Player}
-
+        self.bets = {p: -1 for p in Player}
         deck = self.GetCardDeck()
         random.shuffle(deck)
         for p in Player:
@@ -205,35 +208,28 @@ class SpadesState(GameState):
             if not self.playerHands[self.playerToMove]:
                 points, bags = self.score()
                 self._updateScore(points, bags)
-                # TODO: Investigate what happens when both teams meet the goal on the same turn
                 if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
                     self.tricksInRound = 0
                 self.Deal()
 
     def score(self):
-        # TODO:  implement NIL betting and scoring
         points = {p: 0 for p in Player}
         bags = {p: 0 for p in Player}
 
         for p in Player:
-            if self.tricksTaken[p] >= self.bets[p]:
-                bag = self.tricksTaken[p] - self.bets[p]
-                bags[p] = bag
-                points[p] = self.bets[p] * 10 + bag
+            if self.bets[p] == 0:
+                if self.tricksTaken[p] == 0:
+                    points[p] = 100
+                else:
+                    points[p] = -100
+                    bags[p] = self.tricksTaken[p]
             else:
-                points[p] = self.bets[p] * -10
-
-        # self.NSscore[0] = self.NSscore[0] + points[Player.north] + points[Player.south]
-        # self.EWscore[0] = self.EWscore[0] + points[Player.east] + points[Player.west]
-        # self.NSscore[1] = self.NSscore[1] + bags[Player.north] + bags[Player.south]
-        # self.EWscore[1] = self.EWscore[1] + bags[Player.east] + bags[Player.west]
-        #
-        # if self.NSscore[1] >= 10:
-        #     self.NSscore[0] -= 100
-        #     self.NSscore[1] -= 10
-        # if self.EWscore[1] >= 10:
-        #     self.EWscore[0] -= 100
-        #     self.EWscore[1] -= 10
+                if self.tricksTaken[p] >= self.bets[p]:
+                    bag = self.tricksTaken[p] - self.bets[p]
+                    bags[p] = bag
+                    points[p] = self.bets[p] * 10 + bag
+                else:
+                    points[p] = self.bets[p] * -10
         return points, bags
 
     def _updateScore(self, points, bags):
@@ -292,6 +288,7 @@ class SpadesState(GameState):
         where c is a normalizing constant such that this returns a value [-0.5, 0.5]
         c = 260?
     """
+
     def GetResult(self, player):
         c = 130
         NS = self.scoreChange["NS"][0]
@@ -474,7 +471,7 @@ def ISMCTS(rootstate, itermax, verbose=False):
 
     # Output some information about the tree - can be omitted
     if verbose:
-        # TODO (WISH): write some kind of code to be able interactively interact with a given tree structure
+        # TODO (WISH): write some kind of code to be able interactively interact with a given tree structure [vis-network, javascript]
         print(rootnode.TreeToString(0))
     else:
         print(rootnode.ChildrenToString())

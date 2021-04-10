@@ -2,7 +2,8 @@ from game import *
 from helper import *
 import random
 
-
+# TODO: look at this paper for hand inference
+# http://www.aifactory.co.uk/newsletter/2018_02_opponent_hand.htm
 def main(keep_output = False):
     """
     Hand1
@@ -32,7 +33,7 @@ def main(keep_output = False):
                 game[hand] = stat
 
         if ss.playerToMove == Player.north:
-            m = ISMCTS(rootstate=ss, itermax=1000, verbose=False)
+            m = ISMCTS(rootstate=ss, itermax=10, verbose=False)
         else:
             m = ISMCTS(rootstate=ss, itermax=5, verbose=False)
 
