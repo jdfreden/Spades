@@ -24,7 +24,7 @@ from betting import *
 
 
 # TODO: When there is only one card to play skip the iterations and just play the card
-#hello hello heloo
+
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
 # This code is meant be be subclassed for the specific game
 class GameState:

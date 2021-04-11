@@ -1,7 +1,5 @@
-import helper
-from Types.types import *
-from game import *
-from helper import *
+from temp_old.game import *
+from temp_old.helper import *
 
 import random
 import numpy as np

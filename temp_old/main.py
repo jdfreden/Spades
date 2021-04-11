@@ -2,9 +2,10 @@ from game import *
 from helper import *
 import random
 
+
 # TODO: look at this paper for hand inference
 # http://www.aifactory.co.uk/newsletter/2018_02_opponent_hand.htm
-def main(keep_output = False):
+def main(keep_output=False):
     """
     Hand1
         -Score
