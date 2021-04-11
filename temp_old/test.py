@@ -1,5 +1,5 @@
 from temp_old.game import *
-from temp_old.helper import *
+from helper import *
 
 import random
 import numpy as np

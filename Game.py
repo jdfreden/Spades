@@ -20,6 +20,10 @@
 import random
 from math import sqrt, log
 
+from Types.types import *
+from helper import *
+from betting import *
+
 
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
@@ -79,6 +83,99 @@ def _sortTrick(suit, trump):
 
 
 class SpadesGameState(GameState):
+    """
+    A State of a Spades game. This class inherits the GameState class and is completely implemented by Jake.
+    """
+
+    def __init__(self, dealer):
+        super().__init__()
+
+        # Basic Game State
+        self.numberOfPlayers = 4
+        self.tricksInRound = 13
+        self.NSscore = [0, 0]
+        self.EWscore = [0, 0]
+        self.trumpSuit = Suit.spade
+
+        # Hand State
+        self.dealer = dealer
+        self.playerToMove = self.GetNextPlayer(self.dealer)  # TODO: Compare runtime of function versus a dictionary
+        self.currentTrick = []
+        self.trumpBroken = False
+        self.bets = {p: 0 for p in Player}
+
+        # Card Related Hand State
+        self.playerHands = {p: [] for p in Player}
+        self.tricksTaken = {p: 0 for p in Player}
+        self.discards = []
+
+        # This is needed to implement the score change criterion. This keeps the previous hand's score
+        self.scoreChange = {"NS": [0, 0], "EW": [0, 0]}
+
+        # Deal the hand out
+        self.Deal()
+
+    def Clone(self):
+        st = SpadesGameState(self.dealer)
+        st.playerToMove = self.playerToMove
+
+        st.NSscore = deepcopy(self.NSscore)
+        st.EWscore = deepcopy(self.EWscore)
+        st.playerHands = deepcopy(self.playerHands)
+        st.currentTrick = deepcopy(self.currentTrick)
+        st.tricksTaken = deepcopy(self.tricksTaken)
+        st.discards = deepcopy(self.discards)
+        st.bets = deepcopy(self.bets)
+        st.trumpBroken = self.trumpBroken
+        st.scoreChange = deepcopy(self.scoreChange)
+        return st
+
+    def CloneAndRandomize(self, observer):
+        st = self.Clone()
+
+        seenCards = st.playerHands[observer] + [card for (player, card) in st.currentTrick]
+        unseenCards = [card for card in st.GetCardDeck() if card not in seenCards]
+
+        random.shuffle(unseenCards)
+        for p in Player:
+            if p != observer:
+                numCards = len(self.playerHands[p])
+                st.playerHands[p] = unseenCards[:numCards]
+                unseenCards = unseenCards[numCards:]
+
+        return st
+
+    def GetCardDeck(self):
+        """Creates a full 52 Card deck
+        :return: list of Cards
+        """
+        return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
+
+    def Deal(self):
+        """Deals cards to each player
+        """
+        # Reset Hand Related State
+        self.discards = []
+        self.currentTrick = []
+        self.tricksTaken = {p: 0 for p in Player}
+        self.bets = {p: -1 for p in Player}
+
+        deck = self.GetCardDeck()
+        random.shuffle(deck)
+        for p in Player:
+            self.playerHands[p] = deck[:self.tricksInRound]
+            deck = deck[self.tricksInRound:]
+            # self.Bet(p)
+
+    def GetNextPlayer(self, p):
+        if p == Player.north:
+            return Player.east
+        elif p == Player.east:
+            return Player.south
+        elif p == Player.south:
+            return Player.west
+        else:
+            return Player.north
 
 
 class Node:
