@@ -99,7 +99,7 @@ class SpadesGameState(GameState):
 
         # Hand State
         self.dealer = dealer
-        self.playerToMove = self.GetNextPlayer(self.dealer)  # TODO: Compare runtime of function versus a dictionary
+        self.playerToMove = self.GetNextPlayer(self.dealer)
         self.currentTrick = []
         self.trumpBroken = False
         self.bets = {p: 0 for p in Player}
@@ -177,6 +177,40 @@ class SpadesGameState(GameState):
         else:
             return Player.north
 
+    def GetMoves(self):
+        # Cases to think about:
+        #   - Leader when spades has not been broken
+        #   - Leader when spades has been broken
+        #   - Leader when spades has not been broken and only have spades to play
+        #   - Follower that has to follow suit
+        #   - Follower that is out of the follow suit
+
+        hand = self.playerHands[self.playerToMove]
+
+        # Leader
+        if not self.currentTrick:
+            if not self.trumpBroken:
+                if self._allSpades(self.playerToMove):
+                    return hand
+                else:
+                    return [c for c in hand if c.suit != Suit.spade]
+            else:
+                return hand
+
+        # Follower
+        else:
+            (leader, leadCard) = self.currentTrick[0]
+            cardsInSuit = [card for card in hand if card.suit == leadCard.suit]
+            if cardsInSuit:
+                return cardsInSuit
+            else:
+                return hand
+
+    def _allSpades(self, player):
+        for c in self.playerHands[self.playerToMove]:
+            if c.suit != Suit.spade:
+                return False
+        return True
 
 class Node:
     """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.

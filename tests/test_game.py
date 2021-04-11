@@ -1,5 +1,6 @@
 from unittest import TestCase
 from Game import *
+import random
 
 
 class TestSpadesGameState(TestCase):
@@ -25,8 +26,48 @@ class TestSpadesGameState(TestCase):
         self.assertEqual(state1.NSscore, [100, 1])
         self.assertEqual(state1_copy.NSscore, [100, 0])
 
-    def test_get_card_deck(self):
-        self.fail()
+    def test_getmoves(self):
+        # Cases to think about:
+        #   1 Leader when spades has not been broken
+        #   2 Leader when spades has been broken
+        #   3 Leader when spades has not been broken and only have spades to play
+        #   4 Follower that has to follow suit
+        #   5 Follower that is out of the follow suit
+        random.seed(123)
+        state = SpadesGameState(Player.west)
+        self.assertEqual(state.playerToMove, Player.north)
+        self.assertFalse(state.trumpBroken)
 
-    def test_deal(self):
-        self.fail()
+        state.playerHands[Player.north] = [Card(Suit.spade, 2), Card(Suit.spade, 14), Card(Suit.diamond, 2),
+                                           Card(Suit.club, 2)]
+        moves = state.GetMoves()
+
+        # 1
+        self.assertEqual([Card(Suit.diamond, 2), Card(Suit.club, 2)], moves)
+
+        # 2
+        state.trumpBroken = True
+        moves = state.GetMoves()
+        self.assertEqual([Card(Suit.spade, 2), Card(Suit.spade, 14), Card(Suit.diamond, 2), Card(Suit.club, 2)], moves)
+
+        # 3
+        state.trumpBroken = False
+        state.playerHands[Player.north] = [Card(Suit.spade, 2), Card(Suit.spade, 14)]
+        moves = state.GetMoves()
+        self.assertEqual([Card(Suit.spade, 2), Card(Suit.spade, 14)], moves)
+
+        state.playerHands[Player.north] = [Card(Suit.spade, 2), Card(Suit.spade, 14), Card(Suit.diamond, 2), Card(Suit.club, 2)]
+        state.playerHands[Player.east] = [Card(Suit.spade, 3), Card(Suit.diamond, 3), Card(Suit.heart, 3)]
+        state.playerToMove = Player.east
+
+        # 4
+        state.currentTrick.append((Player.north, Card(Suit.diamond, 2)))
+        moves = state.GetMoves()
+        self.assertEqual([Card(Suit.diamond, 3)], moves)
+
+        # 5
+        state.currentTrick = []
+        state.currentTrick.append((Player.north, Card(Suit.club, 2)))
+        moves = state.GetMoves()
+        self.assertEqual([Card(Suit.spade, 3), Card(Suit.diamond, 3), Card(Suit.heart, 3)], moves)
+
