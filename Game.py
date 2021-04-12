@@ -262,6 +262,14 @@ class SpadesGameState(GameState):
                 self.Deal()
 
     def scoreHand(self):
+        """Score the hand that just finished
+        :return: Tuple of Dicts detailing points and bags for each player
+        """
+        # Cases to think about
+        #   1. Player bets a non-zero and non-13 amount
+        #   2. Player bets 0 (NIL)
+        #   3. Player bets 13 (Shoot the moon)
+
         points = {p: 0 for p in Player}
         bags = {p: 0 for p in Player}
 
@@ -272,6 +280,11 @@ class SpadesGameState(GameState):
                 else:
                     points[p] = -100
                     bags[p] = self.tricksTaken[p]
+            elif self.bets[p] == 13:
+                if self.tricksTaken[p] == 13:
+                    points[p] = 260
+                else:
+                    points[p] = -130
             else:
                 if self.tricksTaken[p] >= self.bets[p]:
                     bag = self.tricksTaken[p] - self.bets[p]
@@ -302,20 +315,6 @@ class SpadesGameState(GameState):
     def retrieveScore(self, player):
         return {"NS": self.NSscore, "EW": self.EWscore}
 
-    def __repr__(self):
-        """ Return a human-readable representation of the state
-        """
-        result = "%s: " % self.playerToMove
-        result += ",".join(str(card) for card in self.sortHand(self.playerToMove))
-        result += " | Tricks: %i" % self.tricksTaken[self.playerToMove]
-        result += " | Trump: %s" % self.trumpSuit
-        result += " | Trick: ["
-        result += ",".join(("%s:%s" % (player, card)) for (player, card) in self.currentTrick)
-        result += "]"
-        result += " | Score: " + str(self.retrieveScore(self.playerToMove)["NS"]) + " - " + str(
-            self.retrieveScore(self.playerToMove)["EW"])
-        return result
-
     def sortHand(self, player):
         """Sorts hand by value in arbitrary suit order
             spade = 1
@@ -335,6 +334,20 @@ class SpadesGameState(GameState):
         di.sort(key=lambda x: x.val)
 
         return sp + cl + he + di
+
+    def __repr__(self):
+        """ Return a human-readable representation of the state
+        """
+        result = "%s: " % self.playerToMove
+        result += ",".join(str(card) for card in self.sortHand(self.playerToMove))
+        result += " | Tricks: %i" % self.tricksTaken[self.playerToMove]
+        result += " | Trump: %s" % self.trumpSuit
+        result += " | Trick: ["
+        result += ",".join(("%s:%s" % (player, card)) for (player, card) in self.currentTrick)
+        result += "]"
+        result += " | Score: " + str(self.retrieveScore(self.playerToMove)["NS"]) + " - " + str(
+            self.retrieveScore(self.playerToMove)["EW"])
+        return result
 
 
 class Node:
