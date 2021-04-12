@@ -71,3 +71,4 @@ class TestSpadesGameState(TestCase):
         moves = state.GetMoves()
         self.assertEqual([Card(Suit.spade, 3), Card(Suit.diamond, 3), Card(Suit.heart, 3)], moves)
 
+    # TODO: Write tests from DoMove and scoreHand

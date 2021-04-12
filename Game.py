@@ -24,6 +24,8 @@ from Types.types import *
 from helper import *
 from betting import *
 
+SCORE_LIMIT = 400
+
 
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
@@ -76,7 +78,7 @@ class GameState:
         pass
 
 
-def _sortTrick(suit, trump):
+def sortTrick(suit, trump):
     suit.sort(key=lambda x: x[1])
     trump.sort(key=lambda x: x[1])
     return suit + trump
@@ -159,6 +161,7 @@ class SpadesGameState(GameState):
         self.currentTrick = []
         self.tricksTaken = {p: 0 for p in Player}
         self.bets = {p: -1 for p in Player}
+        self.trumpBroken = False
 
         deck = self.GetCardDeck()
         random.shuffle(deck)
@@ -211,6 +214,128 @@ class SpadesGameState(GameState):
             if c.suit != Suit.spade:
                 return False
         return True
+
+    def DoMove(self, move):
+        # Play the card, keep track of who played it
+        self.currentTrick.append((self.playerToMove, move))
+
+        # Update the trumpBroken if necessary
+        if move.suit == Suit.spade and not self.trumpBroken:
+            self.trumpBroken = True
+
+        # Remove Card from player's hand and tell next player it is their turn
+        self.playerHands[self.playerToMove].remove(move)
+        self.playerToMove = self.GetNextPlayer(self.playerToMove)
+
+        # The current trick is done. See who wins and update
+        if any(True for (player, card) in self.currentTrick if player == self.playerToMove):
+            (leader, leadCard) = self.currentTrick[0]
+
+            # split the cards that followed suit
+            suitedPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == leadCard.suit]
+
+            # split the cards that were spades
+            trumpPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == self.trumpSuit]
+
+            # order the cards by value and the suit: LeadSuit, TrumpSuit
+            sortedPlays = sortTrick(suitedPlays, trumpPlays)
+
+            trickWinner = sortedPlays[-1][0]
+
+            self.tricksTaken[trickWinner] += 1
+            self.discards += [card for (player, card) in self.currentTrick]
+            self.currentTrick = []
+            self.playerToMove = trickWinner
+
+            # Is the hand over?
+            if not self.playerHands[self.playerToMove]:
+                # Calculate the points gained in the hand
+                points, bags = self.scoreHand()
+                self._updateScore(points, bags)
+
+                # Is the game over?
+                if self.NSscore[0] >= SCORE_LIMIT or self.EWscore[0] >= SCORE_LIMIT:
+                    # End the game
+                    self.tricksInRound = 0
+
+                # Start a new hand
+                self.Deal()
+
+    def scoreHand(self):
+        points = {p: 0 for p in Player}
+        bags = {p: 0 for p in Player}
+
+        for p in Player:
+            if self.bets[p] == 0:
+                if self.tricksTaken[p] == 0:
+                    points[p] = 100
+                else:
+                    points[p] = -100
+                    bags[p] = self.tricksTaken[p]
+            else:
+                if self.tricksTaken[p] >= self.bets[p]:
+                    bag = self.tricksTaken[p] - self.bets[p]
+                    bags[p] = bag
+                    points[p] = self.bets[p] * 10 + bag
+                else:
+                    points[p] = self.bets[p] * -10
+        return points, bags
+
+    def _updateScore(self, points, bags):
+        self.scoreChange["NS"][0] = points[Player.north] + points[Player.south]
+        self.scoreChange["NS"][1] = bags[Player.north] + bags[Player.south]
+        self.scoreChange["EW"][0] = points[Player.east] + points[Player.west]
+        self.scoreChange["EW"][1] = bags[Player.east] + bags[Player.west]
+
+        self.NSscore[0] = self.NSscore[0] + points[Player.north] + points[Player.south]
+        self.EWscore[0] = self.EWscore[0] + points[Player.east] + points[Player.west]
+        self.NSscore[1] = self.NSscore[1] + bags[Player.north] + bags[Player.south]
+        self.EWscore[1] = self.EWscore[1] + bags[Player.east] + bags[Player.west]
+
+        if self.NSscore[1] >= 10:
+            self.NSscore[0] -= 100
+            self.NSscore[1] -= 10
+        if self.EWscore[1] >= 10:
+            self.EWscore[0] -= 100
+            self.EWscore[1] -= 10
+
+    def retrieveScore(self, player):
+        return {"NS": self.NSscore, "EW": self.EWscore}
+
+    def __repr__(self):
+        """ Return a human-readable representation of the state
+        """
+        result = "%s: " % self.playerToMove
+        result += ",".join(str(card) for card in self.sortHand(self.playerToMove))
+        result += " | Tricks: %i" % self.tricksTaken[self.playerToMove]
+        result += " | Trump: %s" % self.trumpSuit
+        result += " | Trick: ["
+        result += ",".join(("%s:%s" % (player, card)) for (player, card) in self.currentTrick)
+        result += "]"
+        result += " | Score: " + str(self.retrieveScore(self.playerToMove)["NS"]) + " - " + str(
+            self.retrieveScore(self.playerToMove)["EW"])
+        return result
+
+    def sortHand(self, player):
+        """Sorts hand by value in arbitrary suit order
+            spade = 1
+            club = 2
+            heart = 3
+            diamond = 4
+        :param player: Player to sort hand
+        :return: sort list of Cards
+        """
+        sp = [card for card in self.playerHands[player] if card.suit == Suit.spade]
+        cl = [card for card in self.playerHands[player] if card.suit == Suit.club]
+        he = [card for card in self.playerHands[player] if card.suit == Suit.heart]
+        di = [card for card in self.playerHands[player] if card.suit == Suit.diamond]
+        sp.sort(key=lambda x: x.val)
+        cl.sort(key=lambda x: x.val)
+        he.sort(key=lambda x: x.val)
+        di.sort(key=lambda x: x.val)
+
+        return sp + cl + he + di
+
 
 class Node:
     """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
