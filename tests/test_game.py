@@ -1,4 +1,6 @@
 from unittest import TestCase
+
+import Game
 from Game import *
 import random
 
@@ -71,8 +73,6 @@ class TestSpadesGameState(TestCase):
         state.currentTrick.append((Player.north, Card(Suit.club, 2)))
         moves = state.GetMoves()
         self.assertEqual([Card(Suit.spade, 3), Card(Suit.diamond, 3), Card(Suit.heart, 3)], moves)
-
-    # TODO: Write tests from DoMove
 
     def test_scorehand(self):
         # Cases to think about make and miss in each
@@ -175,5 +175,17 @@ class TestSpadesGameState(TestCase):
         state1.bets = {Player.north: 1, Player.east: 1, Player.south: 1, Player.west: 0}
         state1.NSscore[0] = 400
         state1.DoMove(state1.GetMoves()[0])
-
+        self.assertFalse(state1.trumpBroken)
         self.assertEqual(0, state1.tricksInRound)
+
+    def test_getresult(self):
+        random.seed(123)
+        state1 = SpadesGameState(Player.north)
+        state1.BACKPROP_CONST = 130
+        state1.scoreChange = {"NS": [100, 0], "EW": [50, 0]}
+        self.assertAlmostEqual(0.3846154, state1.GetResult(Player.north), 4)
+        self.assertAlmostEqual(-0.3846154, state1.GetResult(Player.east), 4)
+
+        state1.scoreChange = {"NS": [0, 1], "EW": [0, 7]}
+        self.assertAlmostEqual(0.4615385, state1.GetResult(Player.north), 4)
+        self.assertAlmostEqual(-0.4615385, state1.GetResult(Player.east), 4)

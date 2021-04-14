@@ -20,11 +20,15 @@
 import random
 from math import sqrt, log
 
+import numpy as np
+
 from Types.types import *
 from helper import *
 from betting import *
 
-SCORE_LIMIT = 400
+
+# TODO: implement opponent hand inference within SpadesGameState
+# TODO: implement betting algo within SpadesGameState (New Class?)
 
 
 class GameState:
@@ -92,6 +96,10 @@ class SpadesGameState(GameState):
     def __init__(self, dealer):
         super().__init__()
 
+        # This are constants that could become parameters for creating the SpadesGameState
+        self.SCORE_LIMIT = 400
+        self.BACKPROP_CONST = 130
+
         # Basic Game State
         self.numberOfPlayers = 4
         self.tricksInRound = 13
@@ -153,6 +161,21 @@ class SpadesGameState(GameState):
         """
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
+    # I have no clue what is happening in the Short Side Suits with Uncounted Spades (4.1.4) section
+    # I am taking a break from trying to include that part
+    def Bet(self, player):
+        bet = []
+        spade_tricks = 0
+        for suit in Suit:
+            sub = list(filter(lambda x: x.suit == suit, self.playerHands[player]))
+            if suit != Suit.spade:
+                bet.extend(side_suit_high(TABLE_1_MOD, sub))
+            else:
+                spade_tricks = spade_betting(sub)
+        bet = np.asarray(bet).sum()
+
+        self.bets[player] = round(bet) + spade_tricks
+
     def Deal(self):
         """Deals cards to each player
         """
@@ -168,7 +191,7 @@ class SpadesGameState(GameState):
         for p in Player:
             self.playerHands[p] = deck[:self.tricksInRound]
             deck = deck[self.tricksInRound:]
-            # self.Bet(p)
+            self.Bet(p)
 
     def GetNextPlayer(self, p):
         if p == Player.north:
@@ -254,7 +277,7 @@ class SpadesGameState(GameState):
                 self._updateScore(points, bags)
 
                 # Is the game over?
-                if self.NSscore[0] >= SCORE_LIMIT or self.EWscore[0] >= SCORE_LIMIT:
+                if self.NSscore[0] >= self.SCORE_LIMIT or self.EWscore[0] >= self.SCORE_LIMIT:
                     # End the game
                     self.tricksInRound = 0
 
@@ -311,6 +334,26 @@ class SpadesGameState(GameState):
         if self.EWscore[1] >= 10:
             self.EWscore[0] -= 100
             self.EWscore[1] -= 10
+
+    def GetResult(self, player):
+        """Implements the score difference value from "Integrating Monte Carlo Tree Search with Knowledge-Based Methods
+to Create Engaging Play in a Commercial Mobile Game" by Whitehouse et. al
+        :param player: Point of view from which to calc the difference
+        :return: score difference. Typically [-0.5, 0.5]
+        """
+
+        NS = self.scoreChange["NS"][0]
+        EW = self.scoreChange["EW"][0]
+        NSb = self.scoreChange["NS"][1]
+        EWb = self.scoreChange["EW"][1]
+
+        if player == Player.north or player == Player.south:
+            res = ((NS - 10 * NSb) - (EW - 10 * EWb)) / self.BACKPROP_CONST
+        else:
+            res = ((EW - 10 * EWb) - (NS - 10 * NSb)) / self.BACKPROP_CONST
+
+        # could threshold the res to be [-0.5, 0.5]
+        return res
 
     def retrieveScore(self, player):
         return {"NS": self.NSscore, "EW": self.EWscore}
@@ -373,7 +416,6 @@ class Node:
         # Return all moves that are legal but have not been tried yet
         return [move for move in legalMoves if move not in triedMoves]
 
-    # TODO (WISH): Later in the game should the parameter be tuned for more exploitation?
     def UCBSelectChild(self, legalMoves, exploration=0.7):
         """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
             exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
@@ -410,7 +452,7 @@ class Node:
             self.wins += terminalState.GetResult(self.playerJustMoved)
 
     def __repr__(self):
-        return "[M:%s W/V/A: %4i/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
+        return "[M:%s W/V/A: %4f/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
 
     def TreeToString(self, indent):
         """ Represent the tree as a string, for debugging purposes.
