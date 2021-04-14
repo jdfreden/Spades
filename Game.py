@@ -15,18 +15,22 @@
 # For more information about Monte Carlo Tree Search check out our web site at www.mcts.ai
 # Also read the article accompanying this code at ***URL HERE***
 
+# This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
+# This code is meant be be subclassed for the specific game
 import random
 from math import sqrt, log
 
-from helper import *
+import numpy as np
+
 from Types.types import *
+from helper import *
 from betting import *
 
 
-# TODO: When there is only one card to play skip the iterations and just play the card
+# TODO: implement opponent hand inference within SpadesGameState
+# TODO: implement betting algo within SpadesGameState (New Class?)
 
-# This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
-# This code is meant be be subclassed for the specific game
+
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
         absolutely necessary to implement ISMCTS in any imperfect information game,
@@ -78,53 +82,62 @@ class GameState:
         pass
 
 
-def _sortTrick(suit, trump):
+def sortTrick(suit, trump):
     suit.sort(key=lambda x: x[1])
     trump.sort(key=lambda x: x[1])
     return suit + trump
 
 
-class SpadesState(GameState):
+class SpadesGameState(GameState):
+    """
+    A State of a Spades game. This class inherits the GameState class and is completely implemented by Jake.
+    """
+
     def __init__(self, dealer):
         super().__init__()
-        self.betting_tab = table_1_mod
+
+        # This are constants that could become parameters for creating the SpadesGameState
+        self.SCORE_LIMIT = 400
+        self.BACKPROP_CONST = 130
+
+        # Basic Game State
         self.numberOfPlayers = 4
         self.tricksInRound = 13
         self.NSscore = [0, 0]
         self.EWscore = [0, 0]
         self.trumpSuit = Suit.spade
 
+        # Hand State
         self.dealer = dealer
         self.playerToMove = self.GetNextPlayer(self.dealer)
         self.currentTrick = []
         self.trumpBroken = False
-
-        self.playerHands = {p: [] for p in Player}
-        self.tricksTaken = {}
-
-        self.discards = []
         self.bets = {p: 0 for p in Player}
+
+        # Card Related Hand State
+        self.playerHands = {p: [] for p in Player}
+        self.tricksTaken = {p: 0 for p in Player}
+        self.discards = []
+
+        # This is needed to implement the score change criterion. This keeps the previous hand's score
         self.scoreChange = {"NS": [0, 0], "EW": [0, 0]}
 
+        # Deal the hand out
         self.Deal()
 
     def Clone(self):
-        st = SpadesState(self.dealer)
+        st = SpadesGameState(self.dealer)
         st.playerToMove = self.playerToMove
-        st.tricksInRound = self.tricksInRound
+
         st.NSscore = deepcopy(self.NSscore)
         st.EWscore = deepcopy(self.EWscore)
         st.playerHands = deepcopy(self.playerHands)
         st.currentTrick = deepcopy(self.currentTrick)
-        st.trumpSuit = self.trumpSuit
         st.tricksTaken = deepcopy(self.tricksTaken)
-        st.dealer = self.dealer
         st.discards = deepcopy(self.discards)
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
-        st.betting_tab = deepcopy(self.betting_tab)
         st.scoreChange = deepcopy(self.scoreChange)
-
         return st
 
     def CloneAndRandomize(self, observer):
@@ -143,28 +156,36 @@ class SpadesState(GameState):
         return st
 
     def GetCardDeck(self):
+        """Creates a full 52 Card deck
+        :return: list of Cards
+        """
         return [Card(suit, val) for suit in Suit for val in range(2, 14 + 1)]
 
-    # TODO: Finish betting scheme
+    # I have no clue what is happening in the Short Side Suits with Uncounted Spades (4.1.4) section
+    # I am taking a break from trying to include that part
     def Bet(self, player):
-        previous = {k: v for k, v in self.bets.items() if v >= 0}
         bet = []
         spade_tricks = 0
         for suit in Suit:
             sub = list(filter(lambda x: x.suit == suit, self.playerHands[player]))
             if suit != Suit.spade:
-                bet.extend(side_suit_high(self.betting_tab, sub))
+                bet.extend(side_suit_high(TABLE_1_MOD, sub))
             else:
                 spade_tricks = spade_betting(sub)
         bet = np.asarray(bet).sum()
-        analyse_previous(previous, bet)
+
         self.bets[player] = round(bet) + spade_tricks
 
     def Deal(self):
+        """Deals cards to each player
+        """
+        # Reset Hand Related State
         self.discards = []
         self.currentTrick = []
         self.tricksTaken = {p: 0 for p in Player}
         self.bets = {p: -1 for p in Player}
+        self.trumpBroken = False
+
         deck = self.GetCardDeck()
         random.shuffle(deck)
         for p in Player:
@@ -182,21 +203,65 @@ class SpadesState(GameState):
         else:
             return Player.north
 
+    def GetMoves(self):
+        # Cases to think about:
+        #   - Leader when spades has not been broken
+        #   - Leader when spades has been broken
+        #   - Leader when spades has not been broken and only have spades to play
+        #   - Follower that has to follow suit
+        #   - Follower that is out of the follow suit
+
+        hand = self.playerHands[self.playerToMove]
+
+        # Leader
+        if not self.currentTrick:
+            if not self.trumpBroken:
+                if self._allSpades(self.playerToMove):
+                    return hand
+                else:
+                    return [c for c in hand if c.suit != Suit.spade]
+            else:
+                return hand
+
+        # Follower
+        else:
+            (leader, leadCard) = self.currentTrick[0]
+            cardsInSuit = [card for card in hand if card.suit == leadCard.suit]
+            if cardsInSuit:
+                return cardsInSuit
+            else:
+                return hand
+
+    def _allSpades(self, player):
+        for c in self.playerHands[self.playerToMove]:
+            if c.suit != Suit.spade:
+                return False
+        return True
+
     def DoMove(self, move):
+        # Play the card, keep track of who played it
         self.currentTrick.append((self.playerToMove, move))
 
+        # Update the trumpBroken if necessary
         if move.suit == Suit.spade and not self.trumpBroken:
             self.trumpBroken = True
 
+        # Remove Card from player's hand and tell next player it is their turn
         self.playerHands[self.playerToMove].remove(move)
-
         self.playerToMove = self.GetNextPlayer(self.playerToMove)
 
+        # The current trick is done. See who wins and update
         if any(True for (player, card) in self.currentTrick if player == self.playerToMove):
             (leader, leadCard) = self.currentTrick[0]
+
+            # split the cards that followed suit
             suitedPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == leadCard.suit]
+
+            # split the cards that were spades
             trumpPlays = [(player, card.val) for (player, card) in self.currentTrick if card.suit == self.trumpSuit]
-            sortedPlays = _sortTrick(suitedPlays, trumpPlays)
+
+            # order the cards by value and the suit: LeadSuit, TrumpSuit
+            sortedPlays = sortTrick(suitedPlays, trumpPlays)
 
             trickWinner = sortedPlays[-1][0]
 
@@ -205,14 +270,29 @@ class SpadesState(GameState):
             self.currentTrick = []
             self.playerToMove = trickWinner
 
+            # Is the hand over?
             if not self.playerHands[self.playerToMove]:
-                points, bags = self.score()
+                # Calculate the points gained in the hand
+                points, bags = self.scoreHand()
                 self._updateScore(points, bags)
-                if self.NSscore[0] >= 400 or self.EWscore[0] >= 400:
+
+                # Is the game over?
+                if self.NSscore[0] >= self.SCORE_LIMIT or self.EWscore[0] >= self.SCORE_LIMIT:
+                    # End the game
                     self.tricksInRound = 0
+
+                # Start a new hand
                 self.Deal()
 
-    def score(self):
+    def scoreHand(self):
+        """Score the hand that just finished
+        :return: Tuple of Dicts detailing points and bags for each player
+        """
+        # Cases to think about
+        #   1. Player bets a non-zero and non-13 amount
+        #   2. Player bets 0 (NIL)
+        #   3. Player bets 13 (Shoot the moon)
+
         points = {p: 0 for p in Player}
         bags = {p: 0 for p in Player}
 
@@ -223,6 +303,11 @@ class SpadesState(GameState):
                 else:
                     points[p] = -100
                     bags[p] = self.tricksTaken[p]
+            elif self.bets[p] == 13:
+                if self.tricksTaken[p] == 13:
+                    points[p] = 260
+                else:
+                    points[p] = -130
             else:
                 if self.tricksTaken[p] >= self.bets[p]:
                     bag = self.tricksTaken[p] - self.bets[p]
@@ -250,62 +335,48 @@ class SpadesState(GameState):
             self.EWscore[0] -= 100
             self.EWscore[1] -= 10
 
-    def _allSpades(self, player):
-        for c in self.playerHands[self.playerToMove]:
-            if c.suit != Suit.spade:
-                return False
-        return True
-
-    def GetMoves(self):
-        hand = self.playerHands[self.playerToMove]
-
-        if not self.currentTrick:
-            # if all cards are spades and trump is not broken set trumpbroken to true and procede
-            if not self.trumpBroken and self._allSpades(self.playerToMove):
-                self.trumpBroken = True
-
-            if not self.trumpBroken:
-                return [c for c in hand if c.suit != Suit.spade]
-            else:
-                return hand
-        else:
-            (leader, leadCard) = self.currentTrick[0]
-            cardsInSuit = [card for card in hand if card.suit == leadCard.suit]
-            if cardsInSuit:
-                return cardsInSuit
-            else:
-                return hand
-
-    def GetResult2(self, player):
-        if player == Player.north or player == Player.south:
-            return self.NSscore, self.EWscore
-        else:
-            return self.EWscore, self.NSscore
-
-    """
-        Use this formula:
-        [(Sp - 10 * Bp) - (So - 10 * Bo)] / c
-        where c is a normalizing constant such that this returns a value [-0.5, 0.5]
-        c = 260?
-    """
-
     def GetResult(self, player):
-        c = 130
+        """Implements the score difference value from "Integrating Monte Carlo Tree Search with Knowledge-Based Methods
+to Create Engaging Play in a Commercial Mobile Game" by Whitehouse et. al
+        :param player: Point of view from which to calc the difference
+        :return: score difference. Typically [-0.5, 0.5]
+        """
+
         NS = self.scoreChange["NS"][0]
         EW = self.scoreChange["EW"][0]
         NSb = self.scoreChange["NS"][1]
         EWb = self.scoreChange["EW"][1]
 
         if player == Player.north or player == Player.south:
-            res = ((NS - 10 * NSb) - (EW - 10 * EWb)) / c
+            res = ((NS - 10 * NSb) - (EW - 10 * EWb)) / self.BACKPROP_CONST
         else:
-            res = ((EW - 10 * EWb) - (NS - 10 * NSb)) / c
+            res = ((EW - 10 * EWb) - (NS - 10 * NSb)) / self.BACKPROP_CONST
 
-        # print(res)
+        # could threshold the res to be [-0.5, 0.5]
         return res
 
-    def isOver(self):
-        return self.GetResult(Player.north) != 0
+    def retrieveScore(self, player):
+        return {"NS": self.NSscore, "EW": self.EWscore}
+
+    def sortHand(self, player):
+        """Sorts hand by value in arbitrary suit order
+            spade = 1
+            club = 2
+            heart = 3
+            diamond = 4
+        :param player: Player to sort hand
+        :return: sort list of Cards
+        """
+        sp = [card for card in self.playerHands[player] if card.suit == Suit.spade]
+        cl = [card for card in self.playerHands[player] if card.suit == Suit.club]
+        he = [card for card in self.playerHands[player] if card.suit == Suit.heart]
+        di = [card for card in self.playerHands[player] if card.suit == Suit.diamond]
+        sp.sort(key=lambda x: x.val)
+        cl.sort(key=lambda x: x.val)
+        he.sort(key=lambda x: x.val)
+        di.sort(key=lambda x: x.val)
+
+        return sp + cl + he + di
 
     def __repr__(self):
         """ Return a human-readable representation of the state
@@ -317,27 +388,9 @@ class SpadesState(GameState):
         result += " | Trick: ["
         result += ",".join(("%s:%s" % (player, card)) for (player, card) in self.currentTrick)
         result += "]"
-        result += " | Score: " + str(self.GetResult2(self.playerToMove)[0]) + " - " + str(
-            self.GetResult2(self.playerToMove)[1])
+        result += " | Score: " + str(self.retrieveScore(self.playerToMove)["NS"]) + " - " + str(
+            self.retrieveScore(self.playerToMove)["EW"])
         return result
-
-    # this function is only meant to make printing hands easier to look at
-    # Sort cards by value in arbitrary suit order
-    #     spade = 1
-    #     club = 2
-    #     heart = 3
-    #     diamond = 4
-    def sortHand(self, player):
-        sp = [card for card in self.playerHands[player] if card.suit == Suit.spade]
-        cl = [card for card in self.playerHands[player] if card.suit == Suit.club]
-        he = [card for card in self.playerHands[player] if card.suit == Suit.heart]
-        di = [card for card in self.playerHands[player] if card.suit == Suit.diamond]
-        sp.sort(key=lambda x: x.val)
-        cl.sort(key=lambda x: x.val)
-        he.sort(key=lambda x: x.val)
-        di.sort(key=lambda x: x.val)
-
-        return sp + cl + he + di
 
 
 class Node:
@@ -363,7 +416,6 @@ class Node:
         # Return all moves that are legal but have not been tried yet
         return [move for move in legalMoves if move not in triedMoves]
 
-    # TODO (WISH): Later in the game should the parameter be tuned for more exploitation?
     def UCBSelectChild(self, legalMoves, exploration=0.7):
         """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
             exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
@@ -400,7 +452,7 @@ class Node:
             self.wins += terminalState.GetResult(self.playerJustMoved)
 
     def __repr__(self):
-        return "[M:%s W/V/A: %4i/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
+        return "[M:%s W/V/A: %4f/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
 
     def TreeToString(self, indent):
         """ Represent the tree as a string, for debugging purposes.
@@ -431,7 +483,6 @@ def ISMCTS(rootstate, itermax, verbose=False):
     rootnode = Node()
 
     for i in range(itermax):
-        # print(i)
         node = rootnode
 
         # Determinize
@@ -452,16 +503,7 @@ def ISMCTS(rootstate, itermax, verbose=False):
             node = node.AddChild(m, player)  # add child and descend tree
 
         # Simulate
-
-        # while state.GetMoves():  # while state is non-terminal
-        #    state.DoMove(random.choice(state.GetMoves()))
-
-        # Implement this
         while state.GetMoves():  # while state is non-terminal
-            if len(state.playerHands[Player.north]) + len(state.playerHands[Player.east]) + len(
-                    state.playerHands[Player.south]) + len(state.playerHands[Player.west]) == 1:
-                state.DoMove(random.choice(state.GetMoves()))
-                break
             state.DoMove(random.choice(state.GetMoves()))
 
         # Backpropagate
@@ -471,7 +513,6 @@ def ISMCTS(rootstate, itermax, verbose=False):
 
     # Output some information about the tree - can be omitted
     if verbose:
-        # TODO (WISH): write some kind of code to be able interactively interact with a given tree structure [vis-network, javascript]
         print(rootnode.TreeToString(0))
     else:
         print(rootnode.ChildrenToString())

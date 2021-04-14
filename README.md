@@ -12,3 +12,7 @@ I want to more thoroughly design the SpadesGameState. Initially, I was eager to 
 - Opponent Hand Inference from here: http://www.aifactory.co.uk/newsletter/2018_02_opponent_hand.htm
 - (WISH) Write interactive visualization from tree data structure in javascript using vis-network
 - Overall improve computational performance and remove clutter state from the SpadesGameState class
+
+
+# Thoughts
+- Should the exploration paramter change as the game gets closer to the end to encourage exploitation?
