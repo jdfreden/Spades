@@ -4,8 +4,9 @@
 
 library(visNetwork)
 
+
 processFile = function(filepath) {
-  lines = c()
+  lines = NULL
   con = file(filepath, "r")
   while ( TRUE ) {
     line = readLines(con, n = 1)
@@ -19,6 +20,18 @@ processFile = function(filepath) {
   close(con)
   return(lines)
 }
+
+assign_colors = function(node) {
+  palette = colorRampPalette(colors=c("#182848", "#4b6cb7"))
+  visits = sort(unique(node$value), decreasing = T)
+  cols = palette(length(visits))
+
+  idx = sapply(node$value, function(x) which(x == visits))
+
+  color = cols[idx]
+  return(color)
+}
+
 
 lines = processFile("example_trees/example_tree_100.txt")
 
@@ -40,11 +53,11 @@ r.stats = as.numeric(r.stats)
 
 from = NULL
 to = NULL
-#level = NULL
 val = r.stats[2]
+repeats = 0
 for(i in seq_along(lines)) {
   cont = unlist(strsplit(lines[i], "\\| "))
-#  l = sum(cont == "")
+  l = sum(cont == "")
   cont = cont[cont != ""]
   info = unlist(strsplit(cont, "\\] "))
   t = gsub("\\[M:", "", unlist(strsplit(info[1], " "))[1])
@@ -54,16 +67,28 @@ for(i in seq_along(lines)) {
   if(is.na(f)) {
     f = "root"
   }
+
+  if(t %in% to) {
+    t = paste(t, repeats, sep = ".")
+    repeats = repeats + 1
+  }
+  names(v) = t
   from = c(from, f)
   to = c(to, t)
   val = c(val, v)
 }
+names(val)[1] = "root"
+val = data.frame(val)
+colnames(val)[1] = "value"
+val$id = rownames(val)
 
 nodes = data.frame(id = unique(c(from, to)))
-nodes$label = nodes$id
+nodes$label = gsub("\\..*", "", nodes$id)
+nodes = merge(nodes, val, by = "id")
 #nodes$value = val
 edges = data.frame(from = from, to = to)
 
+nodes$color = assign_colors(nodes)
 visNetwork(nodes, edges) %>%
   visOptions(collapse = T, highlightNearest = T) %>%
   visHierarchicalLayout(sortMethod = "directed")
