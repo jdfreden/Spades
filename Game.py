@@ -30,7 +30,7 @@ from betting import *
 # TODO: implement opponent hand inference within SpadesGameState
 # TODO: implement betting algo within SpadesGameState (New Class?)
 
-#heooasdf
+
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
         absolutely necessary to implement ISMCTS in any imperfect information game,
@@ -459,7 +459,7 @@ class Node:
         """
         s = self.IndentString(indent) + str(self)
         for c in self.childNodes:
-            s += c.TreeToString(indent + 1)
+            s += c.TreeToString(indent + 1) + " " + str(self.move)
         return s
 
     def IndentString(self, indent):
@@ -475,7 +475,7 @@ class Node:
         return s
 
 
-def ISMCTS(rootstate, itermax, verbose=False):
+def ISMCTS(rootstate, itermax, verbose=0):
     """ Conduct an ISMCTS search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
     """
@@ -504,6 +504,12 @@ def ISMCTS(rootstate, itermax, verbose=False):
 
         # Simulate
         while state.GetMoves():  # while state is non-terminal
+
+            # When the last card of the hand is going to be played break from the rollout
+            if len(state.playerHands[Player.north]) + len(state.playerHands[Player.east]) + len(
+                    state.playerHands[Player.south]) + len(state.playerHands[Player.west]) == 1:
+                state.DoMove(random.choice(state.GetMoves()))
+                break
             state.DoMove(random.choice(state.GetMoves()))
 
         # Backpropagate
@@ -512,9 +518,9 @@ def ISMCTS(rootstate, itermax, verbose=False):
             node = node.parentNode
 
     # Output some information about the tree - can be omitted
-    if verbose:
+    if verbose == 2:
         print(rootnode.TreeToString(0))
-    else:
+    elif verbose == 1:
         print(rootnode.ChildrenToString())
 
     return max(rootnode.childNodes, key=lambda c: c.visits).move  # return the move that was most visited

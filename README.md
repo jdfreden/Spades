@@ -10,7 +10,7 @@ I want to more thoroughly design the SpadesGameState. Initially, I was eager to 
 - Bidding Algorithm from: https://arxiv.org/pdf/1912.11323.pdf
 - Scoring criterion for backpropagation from here: https://www.aaai.org/ocs/index.php/AIIDE/AIIDE13/paper/view/7369/7595
 - Opponent Hand Inference from here: http://www.aifactory.co.uk/newsletter/2018_02_opponent_hand.htm
-- (WISH) Write interactive visualization from tree data structure in javascript using vis-network
+- (WISH) Write interactive visualization from tree data structure in R using vis-network
 - Overall improve computational performance and remove clutter state from the SpadesGameState class
 
 
