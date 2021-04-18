@@ -30,6 +30,7 @@ from betting import *
 # TODO: implement opponent hand inference within SpadesGameState
 # TODO: implement betting algo within SpadesGameState (New Class?)
 
+# Numpy 3d arrays np.zeros((DEPTH, ROWS, COLS))
 
 class GameState:
     """ A state of the game, i.e. the game board. These are the only functions which are
@@ -452,14 +453,16 @@ class Node:
             self.wins += terminalState.GetResult(self.playerJustMoved)
 
     def __repr__(self):
-        return "[M:%s W/V/A: %4f/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
+        return "[M:%s W/V/A: %4f/%4i/%4i/%s]" % (self.move, self.wins, self.visits, self.avails, self.playerJustMoved)
 
     def TreeToString(self, indent):
         """ Represent the tree as a string, for debugging purposes.
         """
         s = self.IndentString(indent) + str(self)
+        if self.parentNode is not None:
+            s = s + " " + str(self.parentNode.move)
         for c in self.childNodes:
-            s += c.TreeToString(indent + 1) + " " + str(self.move)
+            s += c.TreeToString(indent + 1)
         return s
 
     def IndentString(self, indent):

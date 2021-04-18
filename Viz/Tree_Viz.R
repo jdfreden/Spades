@@ -32,8 +32,7 @@ assign_colors = function(node) {
   return(color)
 }
 
-
-lines = processFile("example_trees/example_tree_100.txt")
+lines = processFile("example_trees/test_tree.txt")
 
 lines = gsub("  *", " ", lines)
 r = lines[1]
@@ -54,17 +53,21 @@ r.stats = as.numeric(r.stats)
 from = NULL
 to = NULL
 val = r.stats[2]
+
+# TODO: This is cause the to-from relationship to miss because the of the label appended
 repeats = 0
+depth = 0
 for(i in seq_along(lines)) {
   cont = unlist(strsplit(lines[i], "\\| "))
   l = sum(cont == "")
+
   cont = cont[cont != ""]
   info = unlist(strsplit(cont, "\\] "))
   t = gsub("\\[M:", "", unlist(strsplit(info[1], " "))[1])
   v = unlist(strsplit(info[1], "A: "))[2]
   v = as.numeric(unlist(strsplit(v, "/ "))[2])
   f = unlist(strsplit(info[2], " "))[1]
-  if(is.na(f)) {
+  if(f == "None") {
     f = "root"
   }
 
