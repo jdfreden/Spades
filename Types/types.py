@@ -64,6 +64,9 @@ class Card:
     def __repr__(self):
         return str(self)
 
+    def __hash__(self):
+        return (self.suit * 13) + (self.val - 2)
+
 
 class ProbabiltyTable:
     """

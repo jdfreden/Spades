@@ -16,3 +16,5 @@ I want to more thoroughly design the SpadesGameState. Initially, I was eager to 
 
 # Thoughts
 - Should the exploration paramter change as the game gets closer to the end to encourage exploitation?
+- I wonder if cython could give me any performance increase?  
+    -I am going to give it a shot because I find cython interesting

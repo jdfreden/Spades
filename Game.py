@@ -17,8 +17,11 @@
 
 # This is code copied from https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
 # This code is meant be be subclassed for the specific game
+import itertools
 import random
+import time
 from math import sqrt, log
+import multiprocessing as mp
 
 import numpy as np
 
@@ -541,3 +544,83 @@ def ISMCTS(rootstate, itermax, verbose=0):
         print(rootnode.ChildrenToString())
 
     return max(rootnode.childNodes, key=lambda c: c.visits).move  # return the move that was most visited
+
+
+def ParaISMCTS(rootstate, itermax, verbose = 0):
+    """ The code is mostly the same as the 'ISMCTS' function but returns the number of visits
+        per root->child so they can be aggregated
+        """
+
+    rootnode = Node()
+
+    for i in range(itermax):
+        node = rootnode
+
+        # Determinize
+        state = rootstate.CloneAndRandomize(rootstate.playerToMove)
+
+        # Select
+        while state.GetMoves() != [] and node.GetUntriedMoves(
+                state.GetMoves()) == []:  # node is fully expanded and non-terminal
+            # scale the exploration value as the game goes on.
+            node = node.UCBSelectChild(state.GetMoves())
+            state.DoMove(node.move)
+
+        # Expand
+        untriedMoves = node.GetUntriedMoves(state.GetMoves())
+        if untriedMoves:  # if we can expand (i.e. state/node is non-terminal)
+            m = random.choice(untriedMoves)
+            player = state.playerToMove
+            state.DoMove(m)
+
+            node = node.AddChild(m, player)  # add child and descend tree
+
+        # Simulate
+        while state.GetMoves():  # while state is non-terminal
+
+            # When the last card of the hand is going to be played break from the rollout
+            if len(state.playerHands[Player.north]) + len(state.playerHands[Player.east]) + len(
+                    state.playerHands[Player.south]) + len(state.playerHands[Player.west]) == 1:
+                state.DoMove(random.choice(state.GetMoves()))
+                break
+            state.DoMove(random.choice(state.GetMoves()))
+
+        # Backpropagate
+        while node is not None:  # backpropagate from the expanded node and work back to the root node
+            node.Update(state)
+            node = node.parentNode
+
+    # Output some information about the tree - can be omitted
+    if verbose == 2:
+        print(rootnode.TreeToString(0))
+    elif verbose == 1:
+        print(rootnode.ChildrenToString())
+
+    ret_stats = {}
+    for cn in rootnode.childNodes:
+        ret_stats[cn.move] = cn.visits
+    return ret_stats
+
+def ParaISMCTS_driver(rootstate, total_iter, verbose = 0, numWorkers = 2, timed = False):
+    # st = time.time()
+    poolnum = []
+    n = int(total_iter / numWorkers)
+    for i in range(numWorkers):
+        poolnum.append(n)
+
+    arglist = list(zip(itertools.repeat(deepcopy(rootstate)), poolnum, [verbose] * len(poolnum)))
+    pool = mp.Pool(numWorkers)
+
+    a = pool.starmap(ParaISMCTS, arglist)
+    pool.close()
+    move_count = {}
+    for i in range(0, len(a)):
+        for k in a[i].keys():
+            try:
+                move_count[k] += a[i][k]
+            except KeyError:
+                move_count[k] = a[i][k]
+    # if timed:
+    #     print('Time taken = {} seconds'.format(time.time() - st))
+    return max(move_count, key=move_count.get)
+
