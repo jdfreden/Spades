@@ -96,6 +96,16 @@ class ProbabiltyTable:
                         if self[players_view, players_view, i] != 1:
                             self[players_view, of_player, i] = 1 / 3
 
+    def updateFromBets(self, bets, player):
+        for k in bets.keys():
+            if k != player and bets[k] != -1:
+                if bets[k] == 0:
+                    aceSpadeProb = self[player, k, Card(Suit.spade, 14)]
+                    self[player, k, Card(Suit.spade, 14)] = 0
+                    for upk in bets.keys():
+                        if upk != player and upk != k:
+                            self[player, upk, Card(Suit.spade, 14)] += (aceSpadeProb / 2)
+
     def __repr__(self):
         return str(self.table)
 

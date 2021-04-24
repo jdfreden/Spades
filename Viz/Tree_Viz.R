@@ -4,6 +4,7 @@
 
 library(visNetwork)
 
+ROUND_DIGITS = 5
 
 processFile = function(filepath) {
   lines = NULL
@@ -22,7 +23,7 @@ processFile = function(filepath) {
 }
 
 assign_colors = function(node) {
-  palette = colorRampPalette(colors=c("#182848", "#4b6cb7"))
+  palette = colorRampPalette(colors=c("#FF0000", "#182848"))
   visits = sort(unique(node$value), decreasing = T)
   cols = palette(length(visits))
 
@@ -32,7 +33,7 @@ assign_colors = function(node) {
   return(color)
 }
 
-lines = processFile("example_trees/test_tree.txt")
+lines = processFile("example_trees/test_tree_2.txt")
 
 lines = gsub("  *", " ", lines)
 r = lines[1]
@@ -54,39 +55,55 @@ from = NULL
 to = NULL
 val = r.stats[2]
 
-# TODO: This is cause the to-from relationship to miss because the of the label appended
-repeats = 0
-depth = 0
+
+
+track = list(root = 0)
+
 for(i in seq_along(lines)) {
   cont = unlist(strsplit(lines[i], "\\| "))
-  l = sum(cont == "")
 
   cont = cont[cont != ""]
   info = unlist(strsplit(cont, "\\] "))
   t = gsub("\\[M:", "", unlist(strsplit(info[1], " "))[1])
   v = unlist(strsplit(info[1], "A: "))[2]
-  v = as.numeric(unlist(strsplit(v, "/ "))[2])
+  v = as.numeric(unlist(strsplit(v, "/ ")))
+
+  if(t %in% names(track)) {
+    if(sum(v[1] %in% track[[t]]) == 1) {
+      idx = which(v[1] %in% track[[t]])
+    } else {
+      track[[t]] = c(track[[t]], v[1])
+      idx = length(track[[t]])
+    }
+  } else {
+    track[[t]] = round(v[1], ROUND_DIGITS)
+    idx = 1
+  }
+  t = paste(t, idx, sep = ":")
+  v = v[2]
   f = unlist(strsplit(info[2], " "))[1]
+  f = unlist(strsplit(f, ":"))
+  fv = round(as.numeric(f[2]), ROUND_DIGITS)
+  f = f[1]
   if(f == "None") {
     f = "root"
   }
 
-  if(t %in% to) {
-    t = paste(t, repeats, sep = ".")
-    repeats = repeats + 1
-  }
+  fidx = which(track[[which(f == names(track))]] == fv)
+  f = paste0(f, ":", fidx)
   names(v) = t
   from = c(from, f)
   to = c(to, t)
   val = c(val, v)
 }
-names(val)[1] = "root"
+names(val)[1] = "root:1"
+val.names = names(val)
 val = data.frame(val)
 colnames(val)[1] = "value"
-val$id = rownames(val)
+val$id = val.names
 
 nodes = data.frame(id = unique(c(from, to)))
-nodes$label = gsub("\\..*", "", nodes$id)
+nodes$label = gsub("\\:.*", "", nodes$id)
 nodes = merge(nodes, val, by = "id")
 #nodes$value = val
 edges = data.frame(from = from, to = to)

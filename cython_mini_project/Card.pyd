@@ -1,0 +1,16 @@
+
+cdef extern from "Card.h":
+    cdef cppclass Card:
+        pass
+
+cdef extern from "Card.h":
+    cdef enum Suit:
+        pass
+
+    cdef extern from "Card.h":
+        cdef cppclass Card:
+            Card(Suit, int) except +
+            Suit suit
+            int val
+
+

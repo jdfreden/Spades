@@ -17,11 +17,15 @@ class TestProbabiltyTable(TestCase):
 
         self.assertAlmostEqual(0.333, pt[Player.north, Player.east, Card(Suit.club, 2)], 3)
 
+    def test_updatefrombets(self):
+        random.seed(123)
+        ss = SpadesGameState(Player.north)
+        pt = ProbabiltyTable(4, 52, 4)
 
+        pt.setup(ss.playerHands)
+        #pt.printPlayersView(Player.north)
+        ss.bets[Player.east] = 0
 
-
-
-
-
-
+        pt.updateFromBets(ss.bets, Player.north)
+        pt.printPlayersView(Player.north)
 

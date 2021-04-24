@@ -25,6 +25,8 @@ import numpy as np
 from Types.types import *
 from helper import *
 from betting import *
+import copy
+from pyvis.network import Network
 
 
 # TODO: implement opponent hand inference within SpadesGameState
@@ -107,6 +109,7 @@ class SpadesGameState(GameState):
         self.NSscore = [0, 0]
         self.EWscore = [0, 0]
         self.trumpSuit = Suit.spade
+        # self.ProbTable = ProbabiltyTable(4, 52, 4)
 
         # Hand State
         self.dealer = dealer
@@ -126,6 +129,11 @@ class SpadesGameState(GameState):
         # Deal the hand out
         self.Deal()
 
+        # self.ProbTable.setup(self.playerHands)
+        #
+        # for p in Player:
+        #     self.ProbTable.updateFromBets(self.playerHands, p)
+
     def Clone(self):
         st = SpadesGameState(self.dealer)
         st.playerToMove = self.playerToMove
@@ -139,6 +147,8 @@ class SpadesGameState(GameState):
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
         st.scoreChange = deepcopy(self.scoreChange)
+        #st.ProbTable = copy.deepcopy(self.ProbTable)
+
         return st
 
     def CloneAndRandomize(self, observer):
@@ -147,6 +157,7 @@ class SpadesGameState(GameState):
         seenCards = st.playerHands[observer] + [card for (player, card) in st.currentTrick]
         unseenCards = [card for card in st.GetCardDeck() if card not in seenCards]
 
+        # TODO Adjust this to take into account the probability table
         random.shuffle(unseenCards)
         for p in Player:
             if p != observer:
@@ -417,7 +428,8 @@ class Node:
         # Return all moves that are legal but have not been tried yet
         return [move for move in legalMoves if move not in triedMoves]
 
-    def UCBSelectChild(self, legalMoves, exploration=0.7):
+    # 0.7
+    def UCBSelectChild(self, legalMoves, exploration=.7):
         """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
             exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
         """
@@ -453,14 +465,14 @@ class Node:
             self.wins += terminalState.GetResult(self.playerJustMoved)
 
     def __repr__(self):
-        return "[M:%s W/V/A: %4f/%4i/%4i/%s]" % (self.move, self.wins, self.visits, self.avails, self.playerJustMoved)
+        return "[M:%s W/V/A: %4f/%4i/%4i]" % (self.move, self.wins, self.visits, self.avails)
 
     def TreeToString(self, indent):
         """ Represent the tree as a string, for debugging purposes.
         """
         s = self.IndentString(indent) + str(self)
         if self.parentNode is not None:
-            s = s + " " + str(self.parentNode.move)
+            s = s + " " + str(self.parentNode.move) + ":" + str(self.parentNode.wins)
         for c in self.childNodes:
             s += c.TreeToString(indent + 1)
         return s
@@ -478,6 +490,7 @@ class Node:
         return s
 
 
+
 def ISMCTS(rootstate, itermax, verbose=0):
     """ Conduct an ISMCTS search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
@@ -492,8 +505,8 @@ def ISMCTS(rootstate, itermax, verbose=0):
         state = rootstate.CloneAndRandomize(rootstate.playerToMove)
 
         # Select
-        while state.GetMoves() != [] and node.GetUntriedMoves(
-                state.GetMoves()) == []:  # node is fully expanded and non-terminal
+        while state.GetMoves() != [] and node.GetUntriedMoves(state.GetMoves()) == []:  # node is fully expanded and non-terminal
+            # scale the exploration value as the game goes on.
             node = node.UCBSelectChild(state.GetMoves())
             state.DoMove(node.move)
 
@@ -503,6 +516,7 @@ def ISMCTS(rootstate, itermax, verbose=0):
             m = random.choice(untriedMoves)
             player = state.playerToMove
             state.DoMove(m)
+
             node = node.AddChild(m, player)  # add child and descend tree
 
         # Simulate
