@@ -26,18 +26,17 @@ def run_Para(state, itermax, reps):
 
 def main():
     N = 100
-    # iterations = [5, 10, 50, 100, 500, 1000, 5000, 10000]
-    iterations = [1100, 1300, 1700, 1900, 2100, 2200, 2300, 2400]
+    iterations = [10, 50, 100, 500, 1000, 1100, 1300, 1700, 1900, 2100, 2200, 2300, 2400, 5000, 10000]
 
     normal = []
     para = []
-    for it in iterations:
-        print(it)
-        random.seed(123)
-        ss = SpadesGameState(Player.north)
-        ts = run_Normal(ss, it, N)
-        ts.append(it)
-        normal.append(ts)
+    # for it in iterations:
+    #     print(it)
+    #     random.seed(123)
+    #     ss = SpadesGameState(Player.north)
+    #     ts = run_Normal(ss, it, N)
+    #     ts.append(it)
+    #     normal.append(ts)
 
     for it in iterations:
         print(it)
@@ -47,12 +46,12 @@ def main():
         ts.append(it)
         para.append(ts)
 
-    with open('benchmark/normal.csv', mode='w', newline='') as of:
-        writer = csv.writer(of, delimiter = ',')
-        for l in normal:
-            writer.writerow(l)
+    # with open('benchmark/normal.csv', mode='w', newline='') as of:
+    #     writer = csv.writer(of, delimiter = ',')
+    #     for l in normal:
+    #         writer.writerow(l)
 
-    with open('benchmark/para.csv', mode='w', newline='') as of:
+    with open('benchmark/para_10Workers.csv', mode='w', newline='') as of:
         writer = csv.writer(of, delimiter=',')
         for l in para:
             writer.writerow(l)

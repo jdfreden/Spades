@@ -18,3 +18,7 @@ I want to more thoroughly design the SpadesGameState. Initially, I was eager to 
 - Should the exploration paramter change as the game gets closer to the end to encourage exploitation?
 - I wonder if cython could give me any performance increase?  
     -I am going to give it a shot because I find cython interesting
+  
+- I think I have implemented a root parallelization of the ISMCTS.  
+    - It only becomes faster when the number of iterations is greater than 1900 in its current state.
+    - I wonder if there is a better way. I am not that good with the multiprocessing module in python.
