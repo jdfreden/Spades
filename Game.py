@@ -19,17 +19,15 @@
 # This code is meant be be subclassed for the specific game
 import itertools
 import random
-import time
 from math import sqrt, log
 import multiprocessing as mp
-
-import numpy as np
 
 from Types.types import *
 from helper import *
 from betting import *
-import copy
-from pyvis.network import Network
+
+
+# import copy
 
 
 # TODO: implement opponent hand inference within SpadesGameState
@@ -105,6 +103,7 @@ class SpadesGameState(GameState):
         # This are constants that could become parameters for creating the SpadesGameState
         self.SCORE_LIMIT = 400
         self.BACKPROP_CONST = 130
+        self.EXPLORATION = 0.7
 
         # Basic Game State
         self.numberOfPlayers = 4
@@ -150,7 +149,7 @@ class SpadesGameState(GameState):
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
         st.scoreChange = deepcopy(self.scoreChange)
-        #st.ProbTable = copy.deepcopy(self.ProbTable)
+        # st.ProbTable = copy.deepcopy(self.ProbTable)
 
         return st
 
@@ -231,7 +230,7 @@ class SpadesGameState(GameState):
         # Leader
         if not self.currentTrick:
             if not self.trumpBroken:
-                if self._allSpades(self.playerToMove):
+                if self._allSpades():
                     return hand
                 else:
                     return [c for c in hand if c.suit != Suit.spade]
@@ -247,7 +246,7 @@ class SpadesGameState(GameState):
             else:
                 return hand
 
-    def _allSpades(self, player):
+    def _allSpades(self):
         for c in self.playerHands[self.playerToMove]:
             if c.suit != Suit.spade:
                 return False
@@ -493,7 +492,6 @@ class Node:
         return s
 
 
-
 def ISMCTS(rootstate, itermax, verbose=0):
     """ Conduct an ISMCTS search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
@@ -508,9 +506,10 @@ def ISMCTS(rootstate, itermax, verbose=0):
         state = rootstate.CloneAndRandomize(rootstate.playerToMove)
 
         # Select
-        while state.GetMoves() != [] and node.GetUntriedMoves(state.GetMoves()) == []:  # node is fully expanded and non-terminal
+        while state.GetMoves() != [] and node.GetUntriedMoves(
+                state.GetMoves()) == []:  # node is fully expanded and non-terminal
             # scale the exploration value as the game goes on.
-            node = node.UCBSelectChild(state.GetMoves())
+            node = node.UCBSelectChild(state.GetMoves(), state.EXPLORATION)
             state.DoMove(node.move)
 
         # Expand
@@ -546,7 +545,7 @@ def ISMCTS(rootstate, itermax, verbose=0):
     return max(rootnode.childNodes, key=lambda c: c.visits).move  # return the move that was most visited
 
 
-def ParaISMCTS(rootstate, itermax, verbose = 0):
+def ParaISMCTS(rootstate, itermax, verbose=0):
     """ The code is mostly the same as the 'ISMCTS' function but returns the number of visits
         per root->child so they can be aggregated
         """
@@ -601,10 +600,10 @@ def ParaISMCTS(rootstate, itermax, verbose = 0):
         ret_stats[cn.move] = cn.visits
     return ret_stats
 
-def ParaISMCTS_driver(rootstate, total_iter, verbose = 0, numWorkers = 2, timed = False):
-    # st = time.time()
+
+def ParaISMCTS_driver(rootstate, total_iter, verbose=0, numWorkers=2):
     poolnum = []
-    n = int(total_iter / numWorkers)
+    n = round(total_iter / numWorkers)
     for i in range(numWorkers):
         poolnum.append(n)
 
@@ -620,7 +619,4 @@ def ParaISMCTS_driver(rootstate, total_iter, verbose = 0, numWorkers = 2, timed 
                 move_count[k] += a[i][k]
             except KeyError:
                 move_count[k] = a[i][k]
-    # if timed:
-    #     print('Time taken = {} seconds'.format(time.time() - st))
     return max(move_count, key=move_count.get)
-

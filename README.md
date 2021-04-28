@@ -9,6 +9,8 @@ I want to more thoroughly design the SpadesGameState. Initially, I was eager to 
 # Resources
 - Information Set Monte Carlo Tree Search: https://pure.york.ac.uk/portal/files/13014166/CowlingPowleyWhitehouse2012.pdf
 - ICARUS: https://www.sciencedirect.com/science/article/pii/S0004370214001052#!
+    - MAST: seems interesting
+    - More: http://davexi.co.uk/wp-content/uploads/2018/08/document.pdf
 
 # Things to include:
 - Bidding Algorithm from: https://arxiv.org/pdf/1912.11323.pdf

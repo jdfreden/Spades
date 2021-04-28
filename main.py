@@ -18,9 +18,9 @@ def main(save_scores=False):
 
         if ss.playerToMove == Player.north:
             st = time.time()
-            m = ParaISMCTS_driver(rootstate = ss, total_iter = 1000, verbose = 0, numWorkers = 10)
+            #m = ParaISMCTS_driver(rootstate=ss, total_iter=5000, verbose=0, numWorkers=5)
 
-            #m = ISMCTS(rootstate=ss, itermax=10000, verbose=0)
+            m = ISMCTS(rootstate=ss, itermax=100, verbose=0)
             print('Time taken = {} seconds'.format(time.time() - st))
 
         else:
@@ -39,6 +39,34 @@ def main(save_scores=False):
     print(str(ss.NSscore) + str(ss.EWscore))
 
 
+def main2(ngames):
+    score_track = {"NS": 0, "EW": 0}
+    for i in range(ngames):
+        ss = SpadesGameState(Player.north)
+        ss.SCORE_LIMIT = 400
+        ss.EXPLORATION = .5
+        while ss.GetMoves():
+            # print(ss)
+            if ss.playerToMove == Player.north or ss.playerToMove == Player.south:
+                m = ISMCTS(rootstate=ss, itermax=100, verbose=0)
+            else:
+                #m = ISMCTS(rootstate=ss, itermax=5, verbose=0)
+                m = random.choice(ss.GetMoves())
+
+            # print("Best Move: " + str(m) + "\n")
+            ss.DoMove(m)
+        if ss.NSscore[0] > ss.EWscore[0]:
+            score_track["NS"] += 1
+        else:
+            score_track["EW"] += 1
+        print(str(ss.NSscore) + str(ss.EWscore))
+        print(score_track)
+
+    print(score_track)
+
+
+
 if __name__ == "__main__":
-    random.seed(123)
-    main(save_scores=False)
+    #random.seed(123)
+    #main(save_scores=False)
+    main2(ngames = 50)
