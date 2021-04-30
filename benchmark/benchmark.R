@@ -1,7 +1,3 @@
-# Title     : TODO
-# Objective : TODO
-# Created by: jdfre
-# Created on: 4/24/2021
 
 library(ggplot2)
 library(dplyr)

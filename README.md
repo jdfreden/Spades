@@ -1,16 +1,20 @@
 # Spades
 
 
-I am eyeing a redesign/rebuild of this project
-
-I would keep Node and ISMCTS the same from here: https://gist.github.com/kjlubick/8ea239ede6a026a61f4d
-I want to more thoroughly design the SpadesGameState. Initially, I was eager to try and make it work. I would like to carefully test this class.
+###I am eyeing a redesign/rebuild of this project PART 2
+- I want to create a class for the agent itself (Include MAST table in there).
+- I want to design with parallelism in mind
+- I want to think about a cython implementation
+- Offer the Unexplored Action Urgency as an alternative to UCT
 
 # Resources
 - Information Set Monte Carlo Tree Search: https://pure.york.ac.uk/portal/files/13014166/CowlingPowleyWhitehouse2012.pdf
 - ICARUS: https://www.sciencedirect.com/science/article/pii/S0004370214001052#!
     - MAST: seems interesting
-    - More: http://davexi.co.uk/wp-content/uploads/2018/08/document.pdf
+    - More: http://davexi.co.uk/wp-content/uploads/2018/08/document.pdf, https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4561326/
+- Opponent Modeling: https://webdocs.cs.ualberta.ca/~bowling/papers/06aaai-probmaxn.pdf
+
+- Cython Agent Example: https://github.com/masouduut94/MCTS-agent-cythonized
 
 # Things to include:
 - Bidding Algorithm from: https://arxiv.org/pdf/1912.11323.pdf

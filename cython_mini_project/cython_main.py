@@ -1,4 +1,8 @@
-from nbody import main
+
+
+
+def main():
+    d = 1
 
 if __name__ == "__main__":
-    main(50000)
+    main()

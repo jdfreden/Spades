@@ -127,6 +127,7 @@ class SpadesGameState(GameState):
 
         # This is needed to implement the score change criterion. This keeps the previous hand's score
         self.scoreChange = {"NS": [0, 0], "EW": [0, 0]}
+        self.tricksTakenpast = {p: 0 for p in Player}
 
         # Deal the hand out
         self.Deal()
@@ -149,6 +150,7 @@ class SpadesGameState(GameState):
         st.bets = deepcopy(self.bets)
         st.trumpBroken = self.trumpBroken
         st.scoreChange = deepcopy(self.scoreChange)
+        st.tricksTakenpast = deepcopy(self.tricksTakenpast)
         # st.ProbTable = copy.deepcopy(self.ProbTable)
 
         return st
@@ -286,6 +288,7 @@ class SpadesGameState(GameState):
 
             # Is the hand over?
             if not self.playerHands[self.playerToMove]:
+                self.tricksTakenpast = deepcopy(self.tricksTaken)
                 # Calculate the points gained in the hand
                 points, bags = self.scoreHand()
                 self._updateScore(points, bags)
