@@ -64,8 +64,6 @@ def main():
     clean_info_list = []
     for l in info:
         clean_info_list += clean_info(l)
-    with open("pickled_output2.bin", mode='wb') as bf:
-        pickle.dump(clean_info_list, bf)
 
 
 if __name__ == "__main__":
