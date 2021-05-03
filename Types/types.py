@@ -93,32 +93,16 @@ class ProbabiltyTable:
         self.depth = depth
         self.table = np.zeros((depth, rows, cols))
 
-    def setup(self, hands):
-        for players_view in Player:
-            for of_player in Player:
-                if players_view == of_player:
-                    # set cards in hand to 1 else 0
-                    for c in hands[players_view]:
-                        self[players_view, of_player, c] = 1
-                else:
-                    for i in range(52):
-                        if self[players_view, players_view, i] != 1:
-                            self[players_view, of_player, i] = 1 / 3
+    def setupPlayer(self, hands: dict, playersView: Player):
+        for ofPlayer in Player:
+            if playersView == ofPlayer:
+                for c in hands[playersView]:
+                    self[playersView, ofPlayer, c] = 1
+            else:
+                for i in range(52):
+                    if self[playersView, playersView, i] != 1:
+                        self[playersView, ofPlayer, i] = 1 / 3
 
-    # def updateFromBets(self, bets, player):
-    #     """
-    #     Changes the percentage for the Ace of Spades if someone bets 0
-    #     :param bets: The betting dictionary
-    #     :param player:
-    #     """
-    #     for k in bets.keys():
-    #         if k != player and bets[k] != -1:
-    #             if bets[k] == 0:
-    #                 aceSpadeProb = self[player, k, Card(Suit.spade, 14)]
-    #                 self[player, k, Card(Suit.spade, 14)] = 0
-    #                 for upk in bets.keys():
-    #                     if upk != player and upk != k:
-    #                         self[player, upk, Card(Suit.spade, 14)] += (aceSpadeProb / 2)
     def updateFromBets(self, bets: dict, playersView: Player):
         """
         Changes the percentage of the Ace of Spades if someone bets 0
@@ -164,6 +148,13 @@ class ProbabiltyTable:
 
         for card in deck:
             self[playersView, ofPlayer, card] = 0
+
+    def updateFromDiscards(self, playersView: Player, discards: list):
+        for ofPlayer in Player:
+            if playersView != ofPlayer:
+                for card in discards:
+                    self[playersView, ofPlayer, card] = 0
+
 
     def __repr__(self):
         return str(self.table)
