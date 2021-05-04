@@ -20,7 +20,7 @@ def main(save_scores=False):
             #st = time.time()
             #m = ParaISMCTS_driver(rootstate=ss, total_iter=5000, verbose=0, numWorkers=5)
 
-            m = ISMCTS(rootstate=ss, itermax=1000, verbose=2)
+            m = ISMCTS(rootstate=ss, itermax=1000, verbose=0)
             #print('Time taken = {} seconds'.format(time.time() - st))
 
         else:

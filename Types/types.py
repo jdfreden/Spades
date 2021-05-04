@@ -128,7 +128,7 @@ class ProbabiltyTable:
             for p in zeroBetters:
                 self[playersView, p, Card(Suit.spade, 14)] = 0
 
-        print(zeroBetters)
+        #print(zeroBetters)
 
     def updateSuit(self, playersView: Player, ofPlayer: Player, suit: Suit):
         """

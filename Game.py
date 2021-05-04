@@ -477,8 +477,6 @@ class Node:
         return s
 
 
-
-
 class UCBNode(Node):
     """
     A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
@@ -583,8 +581,7 @@ def ISMCTS(rootstate, itermax, verbose=0, child_select_mode=ChildSelectMode.UCB)
 
     # Output some information about the tree - can be omitted
     if verbose == 2:
-        #print(rootnode.TreeToString(0))
-        write_tree(rootnode)
+        print(rootnode.TreeToString(0))
     elif verbose == 1:
         print(rootnode.ChildrenToString())
 
