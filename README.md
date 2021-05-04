@@ -3,7 +3,7 @@
 ## This is a work-in-progress
 
 ### I am eyeing a redesign/rebuild of this project PART 2
-- I want to create a class for the agent itself (Include MAST table in there).
+- I want to create a class for the agent itself
 - I want to design with parallelism in mind
 - I want to think about a cython implementation
 - Offer the Unexplored Action Urgency as an alternative to UCT
