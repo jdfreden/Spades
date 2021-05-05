@@ -30,9 +30,6 @@ from betting import *
 # import copy
 
 
-# TODO: implement opponent hand inference within SpadesGameState
-# TODO: implement betting algo within SpadesGameState (New Class?)
-
 # Numpy 3d arrays np.zeros((DEPTH, ROWS, COLS))
 
 class GameState:
@@ -161,7 +158,6 @@ class SpadesGameState(GameState):
         seenCards = st.playerHands[observer] + [card for (player, card) in st.currentTrick]
         unseenCards = [card for card in st.GetCardDeck() if card not in seenCards]
 
-        # TODO Adjust this to take into account the probability table
         random.shuffle(unseenCards)
         for p in Player:
             if p != observer:

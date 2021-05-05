@@ -67,7 +67,6 @@ class TestProbabiltyTable(TestCase):
         for p in Player:
             pt.setupPlayer(ss.playerHands, p)
 
-
         pt.updateSuit(Player.north, Player.east, Suit.spade)
 
         self.assertEqual(0, pt[Player.north, Player.east, Card(Suit.spade, 14)])

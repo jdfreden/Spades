@@ -73,7 +73,7 @@ class Card:
     def __hash__(self):
         return (self.suit * 13) + (self.val - 2)
 
-
+# TODO: Look at the changes made when updateSuit and updatefrombets are both called
 class ProbabiltyTable:
     """
     Class holding the probablity table for hand inference. This is meant to be an interior class of SpadesGameState.
@@ -150,11 +150,23 @@ class ProbabiltyTable:
             self[playersView, ofPlayer, card] = 0
 
     def updateFromDiscards(self, playersView: Player, discards: list):
+        """
+        Update the probablities of cards that are seen in the discard. Not sure if this is helpful
+        :param playersView: Player viewing the discards
+        :param discards: The cards that were discarded
+        """
         for ofPlayer in Player:
             if playersView != ofPlayer:
                 for card in discards:
                     self[playersView, ofPlayer, card] = 0
 
+    def checkForOnes(self, playersView: Player):
+        """
+        Checks for cards that playersView knows another player to have
+        :param playersView: Player thats knowledge is being probed
+        """
+        # TODO checkForOnes not implemented
+        raise NotImplementedError()
 
     def __repr__(self):
         return str(self.table)
