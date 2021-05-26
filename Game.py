@@ -30,9 +30,6 @@ from betting import *
 # import copy
 
 
-# TODO: implement opponent hand inference within SpadesGameState
-# TODO: implement betting algo within SpadesGameState (New Class?)
-
 # Numpy 3d arrays np.zeros((DEPTH, ROWS, COLS))
 
 class GameState:
@@ -161,7 +158,6 @@ class SpadesGameState(GameState):
         seenCards = st.playerHands[observer] + [card for (player, card) in st.currentTrick]
         unseenCards = [card for card in st.GetCardDeck() if card not in seenCards]
 
-        # TODO Adjust this to take into account the probability table
         random.shuffle(unseenCards)
         for p in Player:
             if p != observer:
@@ -411,7 +407,9 @@ to Create Engaging Play in a Commercial Mobile Game" by Whitehouse et. al
 
 
 class Node:
-    """ A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
+    """
+    A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
+    This is to be subclassed and have SelectChild implemented
     """
 
     def __init__(self, move=None, parent=None, playerJustMoved=None):
@@ -434,32 +432,11 @@ class Node:
         return [move for move in legalMoves if move not in triedMoves]
 
     # 0.7
-    def UCBSelectChild(self, legalMoves, exploration=.7):
-        """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
-            exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
-        """
-
-        # Filter the list of children by the list of legal moves
-        legalChildren = [child for child in self.childNodes if child.move in legalMoves]
-
-        # Get the child with the highest UCB score
-        s = max(legalChildren,
-                key=lambda c: float(c.wins) / float(c.visits) + exploration * sqrt(log(c.avails) / float(c.visits)))
-
-        # Update availability counts -- it is easier to do this now than during backpropagation
-        for child in legalChildren:
-            child.avails += 1
-
-        # Return the child selected above
-        return s
+    def SelectChild(self, legalMoves, exploration=.7):
+        raise NotImplementedError()
 
     def AddChild(self, m, p):
-        """ Add a new child node for the move m.
-            Return the added child node
-        """
-        n = Node(move=m, parent=self, playerJustMoved=p)
-        self.childNodes.append(n)
-        return n
+        raise NotImplementedError()
 
     def Update(self, terminalState):
         """ Update this node - increment the visit count by one, and increase the win count by the result of terminalState for self.playerJustMoved.
@@ -482,7 +459,8 @@ class Node:
             s += c.TreeToString(indent + 1)
         return s
 
-    def IndentString(self, indent):
+    @staticmethod
+    def IndentString(indent):
         s = "\n"
         for i in range(1, indent + 1):
             s += "| "
@@ -495,12 +473,70 @@ class Node:
         return s
 
 
-def ISMCTS(rootstate, itermax, verbose=0):
+class UCBNode(Node):
+    """
+    A node in the game tree. Note wins is always from the viewpoint of playerJustMoved.
+    This node implements the UCB method for selecting children
+    """
+
+    def __init__(self, move=None, parent=None, playerJustMoved=None):
+        super().__init__(move, parent, playerJustMoved)
+
+    def SelectChild(self, legalMoves, exploration=.7):
+        """ Use the UCB1 formula to select a child node, filtered by the given list of legal moves.
+            exploration is a constant balancing between exploitation and exploration, with default value 0.7 (approximately sqrt(2) / 2)
+        """
+
+        # Filter the list of children by the list of legal moves
+        legalChildren = [child for child in self.childNodes if child.move in legalMoves]
+
+        # Get the child with the highest UCB score
+        s = max(legalChildren,
+                key=lambda c: float(c.wins) / float(c.visits) + exploration * sqrt(log(c.avails) / float(c.visits)))
+
+        # Update availability counts -- it is easier to do this now than during backpropagation
+        for child in legalChildren:
+            child.avails += 1
+
+        # Return the child selected above
+        return s
+
+    def AddChild(self, m, p):
+        """ Add a new child node for the move m.
+            Return the added child node
+        """
+        n = UCBNode(move=m, parent=self, playerJustMoved=p)
+        self.childNodes.append(n)
+        return n
+
+
+class UrgencyNode(Node):
+    def __init__(self, move=None, parent=None, playerJustMoved=None):
+        super().__init__(move, parent, playerJustMoved)
+
+    def SelectChild(self, legalMoves, exploration=.7):
+        d = 1
+
+    def AddChild(self, m, p):
+        """ Add a new child node for the move m.
+            Return the added child node
+        """
+        n = UrgencyNode(move=m, parent=self, playerJustMoved=p)
+        self.childNodes.append(n)
+        return n
+
+
+def ISMCTS(rootstate, itermax, verbose=0, child_select_mode=ChildSelectMode.UCB):
     """ Conduct an ISMCTS search for itermax iterations starting from rootstate.
         Return the best move from the rootstate.
     """
 
-    rootnode = Node()
+    if child_select_mode == ChildSelectMode.UCB:
+        rootnode = UCBNode()
+    elif child_select_mode == ChildSelectMode.Urgency:
+        rootstate = UrgencyNode()
+    else:
+        raise Exception("Invalid mode")
 
     for i in range(itermax):
         node = rootnode
@@ -509,10 +545,10 @@ def ISMCTS(rootstate, itermax, verbose=0):
         state = rootstate.CloneAndRandomize(rootstate.playerToMove)
 
         # Select
-        while state.GetMoves() != [] and node.GetUntriedMoves(
-                state.GetMoves()) == []:  # node is fully expanded and non-terminal
+        # node is fully expanded and non-terminal
+        while state.GetMoves() != [] and node.GetUntriedMoves(state.GetMoves()) == []:
             # scale the exploration value as the game goes on.
-            node = node.UCBSelectChild(state.GetMoves(), state.EXPLORATION)
+            node = node.SelectChild(state.GetMoves(), state.EXPLORATION)
             state.DoMove(node.move)
 
         # Expand

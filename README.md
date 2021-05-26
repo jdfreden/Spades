@@ -1,8 +1,9 @@
 # Spades
 
+## This is a work-in-progress 
 
-###I am eyeing a redesign/rebuild of this project PART 2
-- I want to create a class for the agent itself (Include MAST table in there).
+### I am eyeing a redesign/rebuild of this project PART 2
+- I want to create a class for the agent itself
 - I want to design with parallelism in mind
 - I want to think about a cython implementation
 - Offer the Unexplored Action Urgency as an alternative to UCT
@@ -27,7 +28,7 @@
 # Thoughts
 - Should the exploration paramter change as the game gets closer to the end to encourage exploitation?
 - I wonder if cython could give me any performance increase?  
-    -I am going to give it a shot because I find cython interesting
+    - I am going to give it a shot because I find cython interesting
   
 - I think I have implemented a root parallelization of the ISMCTS.  
     - It only becomes faster when the number of iterations is greater than 1900 in its current state.

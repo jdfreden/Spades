@@ -17,11 +17,11 @@ def main(save_scores=False):
                                     ss.bets[Player.west]])
 
         if ss.playerToMove == Player.north:
-            st = time.time()
+            #st = time.time()
             #m = ParaISMCTS_driver(rootstate=ss, total_iter=5000, verbose=0, numWorkers=5)
 
-            m = ISMCTS(rootstate=ss, itermax=100, verbose=0)
-            print('Time taken = {} seconds'.format(time.time() - st))
+            m = ISMCTS(rootstate=ss, itermax=1000, verbose=0)
+            #print('Time taken = {} seconds'.format(time.time() - st))
 
         else:
             m = ISMCTS(rootstate=ss, itermax=5, verbose=0)
@@ -48,7 +48,7 @@ def main2(ngames):
         while ss.GetMoves():
             # print(ss)
             if ss.playerToMove == Player.north or ss.playerToMove == Player.south:
-                m = ISMCTS(rootstate=ss, itermax=100, verbose=0)
+                m = ISMCTS(rootstate=ss, itermax=1000, verbose=2)
             else:
                 #m = ISMCTS(rootstate=ss, itermax=5, verbose=0)
                 m = random.choice(ss.GetMoves())
@@ -68,5 +68,5 @@ def main2(ngames):
 
 if __name__ == "__main__":
     #random.seed(123)
-    #main(save_scores=False)
-    main2(ngames = 50)
+    main(save_scores=False)
+    #main2(ngames = 50)

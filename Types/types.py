@@ -1,5 +1,6 @@
 import enum
 import numpy as np
+import Game
 
 
 class Suit(enum.IntEnum):
@@ -14,6 +15,11 @@ class Player(enum.IntEnum):
     east = 1
     south = 2
     west = 3
+
+
+class ChildSelectMode(enum.IntEnum):
+    UCB = 0
+    Urgency = 1
 
 
 def prettifySuit(suit):
@@ -67,7 +73,7 @@ class Card:
     def __hash__(self):
         return (self.suit * 13) + (self.val - 2)
 
-
+# TODO: Look at the changes made when updateSuit and updatefrombets are both called
 class ProbabiltyTable:
     """
     Class holding the probablity table for hand inference. This is meant to be an interior class of SpadesGameState.
@@ -87,27 +93,80 @@ class ProbabiltyTable:
         self.depth = depth
         self.table = np.zeros((depth, rows, cols))
 
-    def setup(self, hands):
-        for players_view in Player:
-            for of_player in Player:
-                if players_view == of_player:
-                    # set cards in hand to 1 else 0
-                    for c in hands[players_view]:
-                        self[players_view, of_player, c] = 1
-                else:
-                    for i in range(52):
-                        if self[players_view, players_view, i] != 1:
-                            self[players_view, of_player, i] = 1 / 3
+    def setupPlayer(self, hands: dict, playersView: Player):
+        for ofPlayer in Player:
+            if playersView == ofPlayer:
+                for c in hands[playersView]:
+                    self[playersView, ofPlayer, c] = 1
+            else:
+                for i in range(52):
+                    if self[playersView, playersView, i] != 1:
+                        self[playersView, ofPlayer, i] = 1 / 3
 
-    def updateFromBets(self, bets, player):
+    def updateFromBets(self, bets: dict, playersView: Player):
+        """
+        Changes the percentage of the Ace of Spades if someone bets 0
+        :param bets: the betting dictionary
+        :param playersView: The player that saw the bet of 0
+        """
+        betZero = False
+        zeroBetters = []
+        aceProb = 0
         for k in bets.keys():
-            if k != player and bets[k] != -1:
-                if bets[k] == 0:
-                    aceSpadeProb = self[player, k, Card(Suit.spade, 14)]
-                    self[player, k, Card(Suit.spade, 14)] = 0
-                    for upk in bets.keys():
-                        if upk != player and upk != k:
-                            self[player, upk, Card(Suit.spade, 14)] += (aceSpadeProb / 2)
+            v = bets[k]
+            if v == 0:
+                zeroBetters.append(k)
+                aceProb += self[playersView, k, Card(Suit.spade, 14)]
+                betZero = True
+
+        if betZero:
+            for p in Player:
+                if p != playersView and p not in zeroBetters:
+                    self[playersView, p, Card(Suit.spade, 14)] += (aceProb / (4 - (len(zeroBetters) + 1)))
+
+        if betZero:
+            for p in zeroBetters:
+                self[playersView, p, Card(Suit.spade, 14)] = 0
+
+        #print(zeroBetters)
+
+    def updateSuit(self, playersView: Player, ofPlayer: Player, suit: Suit):
+        """
+        Updates prob table when someone did not follow suit
+        :param playersView: Player that observed the not following
+        :param ofPlayer: Player that did not follow suit
+        :param suit: Lead suit
+        """
+        deck = [Card(suit, val) for val in range(2, 14 + 1)]
+
+        playersProb = self[playersView, ofPlayer, :]
+
+        for otherPlayer in Player:
+            if otherPlayer != playersView and otherPlayer != ofPlayer:
+                for card in deck:
+                    self[playersView, otherPlayer, card] += (playersProb[card.__hash__()] / 2)
+
+        for card in deck:
+            self[playersView, ofPlayer, card] = 0
+
+    def updateFromDiscards(self, playersView: Player, discards: list):
+        """
+        Update the probablities of cards that are seen in the discard. Not sure if this is helpful
+        :param playersView: Player viewing the discards
+        :param discards: The cards that were discarded
+        """
+        for ofPlayer in Player:
+            if playersView != ofPlayer:
+                for card in discards:
+                    self[playersView, ofPlayer, card] = 0
+
+    def checkForOnes(self, playersView: Player):
+        """
+        Checks for cards that playersView knows another player to have
+        :param playersView: Player thats knowledge is being probed
+        """
+        # TODO checkForOnes not implemented
+        raise NotImplementedError()
 
     def __repr__(self):
         return str(self.table)
